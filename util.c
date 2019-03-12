@@ -37,11 +37,14 @@ uint32_t mp_sub(uint16_t* x, uint16_t* y, uint16_t* w) {
   uint16_t n = x[0];
   if (x[0] != y[0])
     return FAILURE;
-  for(i = 0; i < n; i++) {
+  for (i = 0; i < n; i++) {
     w[i + 1] = x[i + 1] - y[i + 1] - c;
     c = y[i + 1] > x[i + 1];
   }
-  w[0] = x[0];
+  if (w[x[0]] == 0)
+    w[0] = x[0] - 1;
+  else
+    w[0] = x[0];
   return SUCCESS;
 }
 
@@ -50,7 +53,7 @@ uint32_t mp_mult(uint16_t* x, uint16_t* y, uint16_t* w) {
   uint16_t c;
   uint32_t uv;
   for (i = 0; i <= x[0] + y[0] + 1; i++)
-    w[i+1] = 0;
+    w[i + 1] = 0;
   for (i = 0; i <= y[0]; i++) {
     c = 0;
     for (j = 0; j <= x[0]; j++) {
@@ -66,6 +69,47 @@ uint32_t mp_mult(uint16_t* x, uint16_t* y, uint16_t* w) {
     }
   }    
   return SUCCESS;
+}
+
+uint32_t mp_copy(uint16_t* src, uint16_t* dest) {
+  uint16_t i;
+  for (i = 0; i <= src[0]; i++)
+    dest[i] = src[i];
+}
+
+uint32_t lsh_radix(uint16_t* x, uint16_t sh) {
+  x[0] += sh;
+  return SUCCESS;
+}
+
+uint32_t check_gteq(uint16_t* x, uint16_t* y) {
+  if (y[0] > x[0])
+    return FAILURE;
+  if (y[0] < x[0])
+    return TRUE;
+  for (i = 1; i <= x[0]; i++) {
+    if (y[i] > x[i])
+      return FAILURE;
+    if (y[i] < x[i])
+      return SUCCESS;  
+  }
+  /* equal */
+  return SUCCESS;
+}
+
+uint32_t check_gt(uint16_t* x, uint16_t* y) {
+  if (y[0] > x[0])
+    return FAILURE;
+  if (y[0] < x[0])
+    return TRUE;
+  for (i = 1; i <= x[0]; i++) {
+    if (y[i] > x[i])
+      return FAILURE;
+    if (y[i] < x[i])
+      return SUCCESS;  
+  }
+  /* equal */
+  return FAILURE;
 }
 
 uint32_t check_equal(uint16_t* x, uint16_t* y) {
