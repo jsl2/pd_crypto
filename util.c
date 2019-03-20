@@ -11,6 +11,14 @@ void print_radix(uint16_t* x) {
   printf("%#06x}\n", x[x[0]]);
 }
 
+uint32_t check_zero(uint16_t* x) {
+  uint16_t i;
+  for (i = 1; i <= x[0]; i++) 
+    if (x[i] != 0)
+      return FAILURE;
+  return SUCCESS;
+}
+
 uint32_t remove_leading_zeros(uint16_t* x) {
   uint16_t i;
   for (i = x[0]; x[i] == 0; i--)
@@ -106,16 +114,16 @@ uint32_t mp_mult_scalar(uint16_t* x, uint16_t y, uint16_t* w) {
     w[i + 1] = 0;
 
   c = 0;
-  for (j = 0; j <= x[0]; j++) {
-    uv = w[j + 1] + ((uint32_t)x[j + 1])*((uint32_t)y) + c;
+  for (j = 0; j < x[0]; j++) {
+    uv = ((uint32_t)x[j + 1])*((uint32_t)y) + c;
     w[j + 1] = uv;
     c = (uv >> 16);
   }  
   if (c) {    
-    w[x[0] + 2] = c;
-    w[0] = x[0] + 2;
-  } else {
+    w[x[0] + 1] = c;
     w[0] = x[0] + 1;
+  } else {
+    w[0] = x[0];
   }
     
   return SUCCESS;
@@ -129,15 +137,21 @@ uint32_t mp_copy(uint16_t* src, uint16_t* dest) {
 }
 
 /*uint32_t lehmer_gcd(uint16_t* x, uint16_t* y) {
-  uint16_t* T[y[0]];
+  uint16_t* T[256] = { 0 };  
+  uint16_t temp[256] = {0};
+  uint16_t temp2[256] = {0};
+  
   int32_t A, B, C, D;
-  uint16_t x_, y_;
+  uint16_t x_, y_, i;
   int32_t q, q_, t;
   if (!check_gteq(x, y))
     return FAILURE;
+  for (i = y[0]+1; i <= x[0]; i++)
+    y[i] = 0;
+    
   while (y[0] > 1) {
     x_ = x[x[0]];
-    y_ = y[y[0]];
+    y_ = y[x[0]];
     A = 1; B = 0; C = 0; D = 1;
     while (y_ + C != 0 && y_ + D != 0) {
       q = (x_ + A)/(y_ + C);
@@ -152,21 +166,131 @@ uint32_t mp_copy(uint16_t* src, uint16_t* dest) {
       x_ = y_;
       y_ = t;
     }
-    if (B == 0) {
-      //T = x mod y
+    if (B == 0) {      
+      mp_div(x, y, temp, T);
       mp_copy(y, x);
       mp_copy(T, y);
     } else {
-      //T = Ax + By
-      //u = Cx + Dy
-      //x = T
-      //y = u
-    }
-    // v = gcd(x, y)
-    return v;
+      mp_mult_scalar(x, A, temp);
+      mp_mult_scalar(y, B, temp2);
+      mp_add(temp, temp2, T);
+      
+      mp_mult_scalar(x, C, temp);
+      mp_mult_scalar(y, D, temp2);
+            
+      mp_copy(T, x);
+      mp_add(temp, temp2, y);      
+    }    
   }
+  // v = gcd(x, y)
+    return v;
   return SUCCESS;
 }*/
+
+uint32_t mp_diveq2(uint16_t* x) {
+  uint16_t i;  
+  for (i = 1; i <= x[0]; i++) {    
+    x[i] >>= 1;
+    if (i < x[0] && x[i + 1] & 0x1)
+      x[i] |= 0x8000;    
+  }
+  remove_leading_zeros(x);
+  return SUCCESS;
+}
+
+uint32_t mp_muleq2(uint16_t* x) {
+  uint16_t i, t;
+  uint16_t c = 0;
+  for (i = 1; i <= x[0]; i++) {
+    t = x[i] & 0x8000;
+    x[i] <<= 1;
+    x[i] |= c;
+    c = t;
+  }
+  if (c) {
+    x[0]++;
+    x[x[0]] = 1;
+  }
+  return SUCCESS;
+}
+
+
+uint32_t binary_extended_gcd(uint16_t* x, uint16_t* y, uint16_t* a, uint16_t* b, uint16_t* gcd) {
+  uint16_t x_[MAX_SIZE] = {0};
+  uint16_t y_[MAX_SIZE] = {0};
+  uint16_t u[MAX_SIZE] = {0};
+  uint16_t v[MAX_SIZE] = {0};
+  uint16_t g[MAX_SIZE] = {0};
+  uint16_t A[MAX_SIZE] = {0};
+  uint16_t B[MAX_SIZE] = {0};
+  uint16_t C[MAX_SIZE] = {0};
+  uint16_t D[MAX_SIZE] = {0};
+  uint16_t temp[MAX_SIZE] = {0};  
+  
+  mp_copy(x, x_);
+  mp_copy(y, y_);
+  g[0] = 1; g[1] = 1;
+  while (!(x[1] & 0x0001) && !(y[1] & 0x0001)) {
+    mp_diveq2(x_);
+    mp_diveq2(y_);
+    mp_muleq2(g);
+  }
+  mp_copy(x_, u);
+  mp_copy(y_, v);
+  A[0] = 1; B[0] = 1; C[0] = 1; D[0] = 1;
+  A[1] = 1; B[1] = 0; C[1] = 0; D[1] = 1;
+  do {
+    while (!(u[1] & 0x0001)) {
+      mp_diveq2(u);
+      if (!(A[1] & 0x0001) && !(B[1] & 0x0001)) {
+	mp_diveq2(A);
+	mp_diveq2(B);
+      } else {
+	mp_add(A, y, temp);
+	mp_copy(temp, A);
+	mp_diveq2(A);
+	mp_sub(B, x, temp);
+	mp_copy(temp, B);
+	mp_diveq2(B);
+      }
+    }
+    while (!(v[1] & 0x0001)) {
+      mp_diveq2(v);
+      if (!(C[1] & 0x0001) && !(D[1] & 0x0001)) {
+	mp_diveq2(C);
+	mp_diveq2(D);
+      } else {
+	mp_add(C, y, temp);
+	mp_copy(temp, C);
+	mp_diveq2(C);
+	mp_sub(D, x, temp);
+	mp_copy(temp, D);
+	mp_diveq2(D);
+      }
+    }
+    if (check_gteq(u, v)) {
+      mp_sub(u, v, temp);
+      mp_copy(temp, u);
+      mp_sub(A, C, temp);
+      mp_copy(temp, A);
+      mp_sub(B, D, temp);
+      mp_copy(temp, B);
+    } else {
+      mp_sub(v, u, temp);
+      mp_copy(temp, v);
+      mp_sub(C, A, temp);
+      mp_copy(temp, C);
+      mp_sub(D, B, temp);
+      mp_copy(temp, D);
+    }
+  } while (!check_zero(u));
+  
+  mp_copy(C, a);
+  mp_copy(D, b);
+  mp_mult(g, v, temp);
+  mp_copy(temp, gcd);  
+  return SUCCESS;
+}
 
 uint32_t lsh_radix(uint16_t* x, uint16_t sh, uint16_t* w) {
   uint16_t i;  
@@ -182,43 +306,42 @@ uint32_t mp_div(uint16_t* x, uint16_t* y, uint16_t* q, uint16_t* r) {
   uint16_t i, j;
   uint16_t n = x[0] - 1;
   uint16_t t = y[0] - 1;
-  uint16_t temp[32] = {0};
-  uint16_t temp2[32] = {0};
-  uint16_t temp3[32] = {0};
+  uint16_t temp[MAX_SIZE] = {0};
+  uint16_t temp2[MAX_SIZE] = {0};
+  uint16_t temp3[MAX_SIZE] = {0};
+  
+  mp_copy(x, r);
   if (n < t || t == 0)
     return FAILURE;  
   for (j = 0; j <= n - t; j++)
     q[j + 1] = 0;
   q[0] = n - t + 1;
-  lsh_radix(y, n-t, temp2);
-  
-  while (check_gteq(x, temp2)) {    
+  lsh_radix(y, n-t, temp2);  
+  while (check_gteq(r, temp2)) {    
     q[n - t + 1] += 1;
-    mp_sub(x, temp2, temp);    
-    mp_copy(temp, x);        
-  }
-  print_radix(x);
+    mp_sub(r, temp2, temp);
+    mp_copy(temp, r);    
+  } 
+  
   for (i = n; i > t; i--) {
-    if (x[i + 1] == y[t + 1])
+    if (r[i + 1] == y[t + 1])
       q[i - t] = 0xFFFF;    
     else
-      q[i - t] = (((uint32_t)x[i + 1] << 16) + x[i]) / y[t + 1];
+      q[i - t] = (((uint32_t)r[i + 1] << 16) + r[i]) / y[t + 1];
     while ((uint64_t)q[i - t] * (((uint64_t)(y[t + 1]) << 16) + y[t]) > ((uint64_t)x[i + 1] << 32) + ((uint64_t)x[i] << 16) + ((uint64_t)x[i - 1]))
       q[i - t] -= 1;    
     lsh_radix(y, i - t - 1, temp2);
-   
     mp_mult_scalar(temp2, q[i - t], temp);
-    mp_sub(x, temp, temp3);
-
-    if (check_gt(temp, x)) {
-      print_radix(temp3);
-      mp_add(temp3, temp2, x);
-      q[i - t] = q[i - t] - 1;
-      print_radix(x);
+    mp_sub(r, temp, temp3);
+    
+    if (check_gt(temp, r)) {
+      mp_add(temp3, temp2, r);
+      q[i - t] -= 1;      
+    } else {
+      mp_copy(temp3, r);
     }
   }
-  
-  mp_copy(x, r);
+    
   remove_leading_zeros(r);
   return SUCCESS;
 }
