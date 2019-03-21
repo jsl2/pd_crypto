@@ -11,14 +11,6 @@ void print_radix(uint16_t* x) {
   printf("%#06x}\n", x[x[0]]);
 }
 
-uint32_t check_zero(uint16_t* x) {
-  uint16_t i;
-  for (i = 1; i <= x[0]; i++) 
-    if (x[i] != 0)
-      return FAILURE;
-  return SUCCESS;
-}
-
 uint32_t remove_leading_zeros(uint16_t* x) {
   uint16_t i;
   for (i = x[0]; x[i] == 0; i--)
@@ -26,10 +18,23 @@ uint32_t remove_leading_zeros(uint16_t* x) {
   return SUCCESS;
 }
 
-uint32_t zero_pad(uint16_t* x, uint16_t zeros) {
+uint32_t check_zero(uint16_t* x) {
+  uint16_t i;  
+  if (x[0] == 0)
+    return SUCCESS;
+  for (i = 1; i <= x[0]; i++) 
+    if (x[i] != 0)
+      return FAILURE;
+  return SUCCESS;
+}
+
+uint32_t sign_extend(uint16_t* x, uint16_t zeros) {
   uint16_t i;
-  for (i = x[0] + 1; i <= x[0] + zeros; i++)
-    x[i] = 0;
+  uint16_t neg;
+  neg = (x[x[0]] & 0x8000);
+  for (i = x[0] + 1; i <= x[0] + zeros; i++) {
+    x[i] = neg ? 0xffff : 0;
+  }
   x[0] += zeros;
   return SUCCESS;
 }
@@ -38,19 +43,20 @@ uint32_t mp_add(uint16_t* x, uint16_t* y, uint16_t* w) {
   uint16_t c = 0;
   uint16_t i = 0;
   uint16_t n = 0;
+  uint16_t sign;
   if (x[0] != y[0]) {
     if (x[0] > y[0])
-      zero_pad(y, x[0] - y[0]);
+      sign_extend(y, x[0] - y[0]);
     else
-      zero_pad(x, y[0] - x[0]);
-  }
-
+      sign_extend(x, y[0] - x[0]);
+  }  
+  sign = (x[x[0]] & 0x8000) || (y[y[0]] & 0x8000);
   n = x[0];  
   for(i = 0; i < n; i++) {
     w[i + 1] = x[i + 1] + y[i + 1] + c;
     c = w[i + 1] < x[i + 1];
   }
-  if (c > 0) {
+  if (c > 0 && !sign) {
     w[0] = n + 1; 
     w[n + 1] = c;
   } else {
@@ -62,24 +68,28 @@ uint32_t mp_add(uint16_t* x, uint16_t* y, uint16_t* w) {
 uint32_t mp_sub(uint16_t* x, uint16_t* y, uint16_t* w) {  
   uint16_t i = 0;
   uint16_t c = 0;
-  uint16_t n = x[0];
+  uint16_t n;
   /*if (x[0] != y[0])
-    return FAILURE;*/
+    return FAILURE;*/ 
   if (x[0] != y[0]) {
     if (x[0] > y[0]) {
-      zero_pad(y, x[0] - y[0]);
+      sign_extend(y, x[0] - y[0]);
     } else {
-      zero_pad(x, y[0] - x[0]);
+      sign_extend(x, y[0] - x[0]);
     }
+  }
+  n = x[0];
+  if (check_equal(x, y)) {
+    w[0] = 0;
+    w[1] = 0;
+    return SUCCESS;
   }
   for (i = 0; i < n; i++) {
     w[i + 1] = x[i + 1] - y[i + 1] - c;
     c = y[i + 1] > x[i + 1];
   }
-  if (w[x[0]] == 0)
-    w[0] = x[0] - 1;
-  else
-    w[0] = x[0];
+  
+  w[0] = x[0];  
   return SUCCESS;
 }
 
@@ -87,22 +97,22 @@ uint32_t mp_mult(uint16_t* x, uint16_t* y, uint16_t* w) {
   uint16_t i, j;  
   uint16_t c;
   uint32_t uv;
-  for (i = 0; i <= x[0] + y[0] + 1; i++)
+  for (i = 0; i < x[0] + y[0]; i++)
     w[i + 1] = 0;
-  for (i = 0; i <= y[0]; i++) {
+  for (i = 0; i < y[0]; i++) {
     c = 0;
-    for (j = 0; j <= x[0]; j++) {
+    for (j = 0; j < x[0]; j++) {
       uv = w[i + j + 1] + ((uint32_t)x[j + 1])*((uint32_t)y[i + 1]) + c;
       w[i + j + 1] = uv;
       c = (uv >> 16);
     }
-    if (uv >> 16) {
-      w[i + x[0] + 2] = (uv >> 16);
-      w[0] = x[0] + y[0] + 1;
-    } else {
+    w[i + x[0] + 1] = (uv >> 16);
+  }
+  if (uv >> 16) {      
       w[0] = x[0] + y[0];
+    } else {
+      w[0] = x[0] + y[0] - 1;
     }
-  }    
   return SUCCESS;
 }
 
@@ -189,12 +199,14 @@ uint32_t mp_copy(uint16_t* src, uint16_t* dest) {
 
 uint32_t mp_diveq2(uint16_t* x) {
   uint16_t i;  
+  uint16_t sign = x[x[0]] & 0x8000;
   for (i = 1; i <= x[0]; i++) {    
     x[i] >>= 1;
-    if (i < x[0] && x[i + 1] & 0x1)
+    if ((i < x[0] && x[i + 1] & 0x1))
       x[i] |= 0x8000;    
   }
-  remove_leading_zeros(x);
+  if (sign)
+    x[x[0]] |= 0x8000;
   return SUCCESS;
 }
 
@@ -204,7 +216,8 @@ uint32_t mp_muleq2(uint16_t* x) {
   for (i = 1; i <= x[0]; i++) {
     t = x[i] & 0x8000;
     x[i] <<= 1;
-    x[i] |= c;
+    if (c)
+      x[i] |= 1;
     c = t;
   }
   if (c) {
@@ -226,22 +239,22 @@ uint32_t binary_extended_gcd(uint16_t* x, uint16_t* y, uint16_t* a, uint16_t* b,
   uint16_t C[MAX_SIZE] = {0};
   uint16_t D[MAX_SIZE] = {0};
   uint16_t temp[MAX_SIZE] = {0};  
-  
   mp_copy(x, x_);
   mp_copy(y, y_);
+  
   g[0] = 1; g[1] = 1;
-  while (!(x[1] & 0x0001) && !(y[1] & 0x0001)) {
+  while (!(x_[1] & 0x0001) && !(y_[1] & 0x0001)) {
     mp_diveq2(x_);
-    mp_diveq2(y_);
-    mp_muleq2(g);
+    mp_diveq2(y_);    
+    mp_muleq2(g);    
   }
   mp_copy(x_, u);
   mp_copy(y_, v);
   A[0] = 1; B[0] = 1; C[0] = 1; D[0] = 1;
-  A[1] = 1; B[1] = 0; C[1] = 0; D[1] = 1;
-  do {
-    while (!(u[1] & 0x0001)) {
-      mp_diveq2(u);
+  A[1] = 1; B[1] = 0; C[1] = 0; D[1] = 1;    
+  do {        
+    while (!(u[1] & 0x0001)) {      
+      mp_diveq2(u);      
       if (!(A[1] & 0x0001) && !(B[1] & 0x0001)) {
 	mp_diveq2(A);
 	mp_diveq2(B);
@@ -251,7 +264,7 @@ uint32_t binary_extended_gcd(uint16_t* x, uint16_t* y, uint16_t* a, uint16_t* b,
 	mp_diveq2(A);
 	mp_sub(B, x, temp);
 	mp_copy(temp, B);
-	mp_diveq2(B);
+	mp_diveq2(B);	
       }
     }
     while (!(v[1] & 0x0001)) {
@@ -265,12 +278,12 @@ uint32_t binary_extended_gcd(uint16_t* x, uint16_t* y, uint16_t* a, uint16_t* b,
 	mp_diveq2(C);
 	mp_sub(D, x, temp);
 	mp_copy(temp, D);
-	mp_diveq2(D);
-      }
+	mp_diveq2(D);	
+      }      
     }
-    if (check_gteq(u, v)) {
-      mp_sub(u, v, temp);
-      mp_copy(temp, u);
+    if (check_gteq(u, v)) {      
+      mp_sub(u, v, temp);      
+      mp_copy(temp, u);      
       mp_sub(A, C, temp);
       mp_copy(temp, A);
       mp_sub(B, D, temp);
@@ -282,13 +295,14 @@ uint32_t binary_extended_gcd(uint16_t* x, uint16_t* y, uint16_t* a, uint16_t* b,
       mp_copy(temp, C);
       mp_sub(D, B, temp);
       mp_copy(temp, D);
-    }
+    }    
   } while (!check_zero(u));
   
   mp_copy(C, a);
   mp_copy(D, b);
-  mp_mult(g, v, temp);
-  mp_copy(temp, gcd);  
+  mp_mult(g, v, temp);  
+  mp_copy(temp, gcd); 
+  remove_leading_zeros(gcd);
   return SUCCESS;
 }
 
@@ -348,11 +362,12 @@ uint32_t mp_div(uint16_t* x, uint16_t* y, uint16_t* q, uint16_t* r) {
 
 uint32_t check_gteq(uint16_t* x, uint16_t* y) {
   uint16_t i;
-  if (x[0] > y[0])
+  uint16_t larger = x[0] > y[0] ? x[0] : y[0];
+  /*if (x[0] > y[0])
     return SUCCESS;
   if (x[0] < y[0])
-    return FAILURE;
-  for (i = x[0]; i > 0; i--) {
+    return FAILURE;*/
+  for (i = larger; i > 0; i--) {
     if (x[i] > y[i])
       return SUCCESS;
     if (x[i] < y[i])

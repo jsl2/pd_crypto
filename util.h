@@ -8,7 +8,7 @@
 
 void print_radix(uint16_t* x);
 
-uint32_t zero_pad(uint16_t* x, uint16_t zeros);
+uint32_t sign_extend(uint16_t* x, uint16_t zeros);
 
 uint32_t mp_add(uint16_t* x, uint16_t* y, uint16_t* w);
 

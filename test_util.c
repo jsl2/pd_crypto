@@ -6,6 +6,10 @@
 
 uint16_t a[] = {0x8, 0x4867, 0x3767, 0x2d60, 0xa503, 0x7fe4, 0xa540, 0xc070, 0x67e7};
 uint16_t b[] = {0x8, 0x78f9, 0x4952, 0x2293, 0xabbe, 0xb0c7, 0x2fb9, 0xe566, 0x4c4c};
+/* e = gcd(a,b) */
+uint16_t e[] = {0x1, 0x0001};
+/* f = a^{-1} mod b */
+uint16_t f[] = {0x8, 0x778c, 0x6c90, 0xa80c, 0xe431, 0x4674, 0x1b2c, 0x02a4, 0x3e99};
 uint16_t m[] = {0x7, 0x78fa, 0xe4d2, 0x7165, 0x9ded, 0x9b72, 0x10f1, 0x1d56};
 /* g = a / m  */
 uint16_t g[] = {0x2, 0x8ab8, 0x0003};
@@ -22,6 +26,8 @@ uint16_t s = 0x2b73;
 /* l = s * a */
 uint16_t l[] = {0x9, 0xd345, 0x3c8e, 0x8b87, 0xa90c, 0xdb6d, 0x1174, 0x5e5c, 0x9a6e, 0x11a2};
 
+uint16_t u[] = {0x1, 383};
+uint16_t v[] = {0x1, 271};
 uint16_t test_array[MAX_SIZE] = {0};
 uint16_t test_array2[MAX_SIZE] = {0};
 uint16_t test_array3[MAX_SIZE] = {0};
@@ -45,7 +51,12 @@ int main(void) {
   mp_div(a, b, test_array, test_array2);
   RUN_TEST("Modulo test a mod b", test_array2, h);
   
-  binary_extended_gcd(a, b, test_array, test_array2, test_array3);
-  print_radix(test_array3);
+  /*binary_extended_gcd(b, a, test_array, test_array2, test_array3);
+  RUN_TEST("GCD test: gcd(a,b)", test_array3, e);
+  */
+  binary_extended_gcd(u, v, test_array, test_array2, test_array3);
+  print_radix(test_array);
+  print_radix(test_array2);
+  /*RUN_TEST("Modular inverse a^{-1} mod b", test_array, f);*/
   return 0;
 }
