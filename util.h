@@ -34,10 +34,14 @@ void mp_div(uint16_t* x, uint16_t* y, uint16_t* q, uint16_t* r);
 
 void binary_extended_gcd(uint16_t* x, uint16_t* y, uint16_t* a, uint16_t* b, uint16_t* gcd);
 
+void barret_reduction(uint16_t* x, uint16_t* m, uint16_t* mew, uint16_t* r);
+
 uint32_t is_equal(uint16_t *x, uint16_t *y);
 
 uint32_t is_gteq(uint16_t *x, uint16_t *y);
 
 uint32_t is_gt(uint16_t *x, uint16_t *y);
+
+uint32_t is_zero(uint16_t *x);
 
 #endif

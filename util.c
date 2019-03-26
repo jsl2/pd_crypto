@@ -28,15 +28,6 @@ void remove_leading_zeros(uint16_t *x) {
         x[0]--;
 }
 
-uint32_t is_zero(uint16_t *x) {
-    uint16_t i;
-    if (x[0] == 0)
-        return TRUE;
-    for (i = 1; i <= x[0]; i++)
-        if (x[i] != 0)
-            return FALSE;
-    return TRUE;
-}
 
 /*
  * Performs multi-precision twos complement.
@@ -390,6 +381,24 @@ void lsh_radix(const uint16_t *x, uint16_t sh, uint16_t *w) {
 }
 
 /*
+ * Right shift multiple precision integer by a multiple of 16
+ */
+void rsh_radix(const uint16_t *x, uint16_t sh, uint16_t *w) {
+    uint16_t i;
+    if (sh >= x[0]) {
+        w[0] = 1;
+        w[1] = 0;
+        return;
+    }
+    for (i = 1; i <= x[0] - sh; i++)
+        w[i] = 0;
+    for (i = 1; i <= x[0] - sh; i++)
+        w[i] = x[i + sh];
+    w[0] = x[0] - sh;
+}
+
+
+/*
  * Multiple-precision division
  * Algorithm 14.20 - Handbook of applied cryptography
  */
@@ -447,6 +456,46 @@ void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
     remove_leading_zeros(r);
 }
 
+/*
+ * Barrett modular reduction
+ * Algorithm 14.42 - Handbook of applied cryptography
+ */
+void barret_reduction(uint16_t* x, uint16_t* m, uint16_t* mew, uint16_t* r) {
+    uint16_t k, x_size, i;
+    uint16_t r1[MAX_SIZE];
+    uint16_t q1[MAX_SIZE];
+    uint16_t q2[MAX_SIZE];
+    uint16_t q3[MAX_SIZE];
+    uint16_t r2[MAX_SIZE];
+    uint16_t temp[MAX_SIZE];
+    uint16_t temp2[MAX_SIZE];
+    k = m[0];
+    x_size = x[0];
+    rsh_radix(x, k - ONE, q1);
+    sign_extend(x, (uint16_t)(2*k) - x_size);
+    mp_mult(mew, q1, q2);
+    rsh_radix(q2, k + ONE, q3);
+    mp_copy(x, r1);
+    r1[0] = k + ONE;
+    mp_mult(q3, m, r2); /* not all digits of multiplication require computation - can be optimized*/
+    r2[0] = k + ONE;
+    mp_sub(r1, r2, r);
+    if (IS_NEGATIVE(r[r[0]])) {
+        temp[0] = k + ONE;
+        temp[k + 1] = ONE;
+        for (i = 1; i <= k; i++)
+            temp[i] = ZERO;
+        mp_add(r, temp, temp2);
+        mp_copy(temp2, r);
+    }
+    while (is_gteq(r, m)) {
+        mp_sub(r, m, temp);
+        mp_copy(temp, r);
+    }
+    x[0] = x_size;
+    remove_leading_zeros(r);
+}
+
 uint32_t is_gteq(uint16_t *x, uint16_t *y) {
     uint16_t i;
     uint16_t larger = x[0] > y[0] ? x[0] : y[0];
@@ -483,5 +532,15 @@ uint32_t is_equal(uint16_t *x, uint16_t *y) {
         if (x[i] != y[i])
             return FALSE;
 
+    return TRUE;
+}
+
+uint32_t is_zero(uint16_t *x) {
+    uint16_t i;
+    if (x[0] == 0)
+        return TRUE;
+    for (i = 1; i <= x[0]; i++)
+        if (x[i] != 0)
+            return FALSE;
     return TRUE;
 }
