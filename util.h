@@ -12,6 +12,9 @@
 #define TRUE 1
 #define FALSE 0
 
+#define SUCCESS 1
+#define FAILURE 0
+
 #define MAX_SIZE 512
 
 void print_radix(uint16_t* x);
@@ -28,6 +31,8 @@ void mp_sub(uint16_t* x, uint16_t* y, uint16_t* w);
 
 void mp_mult(uint16_t* x, uint16_t* y, uint16_t* w);
 
+void mp_square(uint16_t *x, uint16_t *w);
+
 void mp_mult_scalar(uint16_t* x, uint16_t y, uint16_t* w);
 
 void mp_div(uint16_t* x, uint16_t* y, uint16_t* q, uint16_t* r);
@@ -36,6 +41,12 @@ void binary_extended_gcd(uint16_t* x, uint16_t* y, uint16_t* a, uint16_t* b, uin
 
 void barret_reduction(uint16_t* x, uint16_t* m, uint16_t* mew, uint16_t* r);
 
+void twos_complement(uint16_t *x, uint16_t *w);
+
+uint32_t mont_mult(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uint16_t *a);
+
+uint32_t mont_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16_t *R_mod_m, uint16_t *R_square_mod_m, uint16_t *a);
+
 uint32_t is_equal(uint16_t *x, uint16_t *y);
 
 uint32_t is_gteq(uint16_t *x, uint16_t *y);
@@ -43,5 +54,7 @@ uint32_t is_gteq(uint16_t *x, uint16_t *y);
 uint32_t is_gt(uint16_t *x, uint16_t *y);
 
 uint32_t is_zero(uint16_t *x);
+
+void remove_leading_zeros(uint16_t *x);
 
 #endif

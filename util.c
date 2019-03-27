@@ -24,7 +24,7 @@ void print_radix_number(uint16_t *x) {
  */
 void remove_leading_zeros(uint16_t *x) {
     uint16_t i;
-    for (i = x[0]; x[i] == 0; i--)
+    for (i = x[0]; x[i] == 0 && i > 0; i--)
         x[0]--;
 }
 
@@ -61,6 +61,18 @@ void sign_extend(uint16_t *x, uint16_t length) {
     neg = IS_NEGATIVE(x[x[0]]);
     for (i = x[0] + ONE; i <= x[0] + length; i++) {
         x[i] = neg ? NEG_ONE : ZERO;
+    }
+    x[0] += length;
+}
+
+/*
+ * Sign extend such that length of x is x[0] + length
+ */
+void zero_pad(uint16_t *x, uint16_t length) {
+    uint16_t i;
+
+    for (i = x[0] + ONE; i <= x[0] + length; i++) {
+        x[i] = ZERO;
     }
     x[0] += length;
 }
@@ -190,6 +202,37 @@ void mp_mult(uint16_t *x, uint16_t *y, uint16_t *w) {
     } else {
         w[0] = x[0] + y[0] - ONE;
     }
+}
+
+void mp_square(uint16_t *x, uint16_t *w) {
+    uint16_t i, j;
+    uint32_t c;
+    uint64_t uv = 0;
+    uint16_t temp[MAX_SIZE] = {0};
+
+    if (IS_NEGATIVE(x[x[0]])) {
+        twos_complement(x, temp);
+        mp_square(temp, w);
+        return;
+    }
+    for (i = 0; i < 2 * x[0]; i++)
+        w[i + 1] = 0;
+    for (i = 0; i < x[0]; i++){
+        uv = (uint64_t)w[2*i + 1] + (uint64_t)x[i + 1] * (uint64_t)x[i + 1];
+        w[2*i + 1] = (uint16_t)uv;
+        c = (uint32_t)(uv >> 16);
+        for (j = i + ONE; j < x[0]; j++) {
+            uv = (uint64_t)w[i + j + 1] + (2 * (uint64_t)x[j + 1] * (uint64_t)x[i + 1]) + (uint64_t)c;
+            w[i + j + 1] = (uint16_t)uv;
+            c = (uint32_t)(uv >> 16);
+        }
+        w[i + x[0] + 1] = (uint16_t)(uv >> 16);
+        if ((uv >> 32) > 0) {
+            w[i + x[0] + 2] = (uint16_t)(uv >> 32);
+        }
+    }
+    w[0] = (uint16_t)2*x[0];
+    remove_leading_zeros(w);
 }
 
 /*
@@ -441,11 +484,12 @@ void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
         while ((uint64_t) q[i - t] * (((uint64_t) (y[t + 1]) << 16) + y[t]) >
                ((uint64_t) x[i + 1] << 32) + ((uint64_t) x[i] << 16) + ((uint64_t) x[i - 1]))
             q[i - t] -= 1;
-        lsh_radix(y, i - t - (uint16_t) 1, temp2);
+        lsh_radix(y, i - t - ONE, temp2);
         mp_mult_scalar(temp2, q[i - t], temp);
+        if (temp[0] < x[0])
+            zero_pad(temp, x[0] - temp[0]);
         mp_sub(r, temp, temp3);
-
-        if (is_gt(temp, r)) {
+        if (IS_NEGATIVE(temp3[temp3[0]])) {
             mp_add(temp3, temp2, r);
             q[i - t] -= 1;
         } else {
@@ -454,6 +498,7 @@ void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
     }
 
     remove_leading_zeros(r);
+    remove_leading_zeros(q);
 }
 
 /*
@@ -461,7 +506,7 @@ void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
  * Algorithm 14.42 - Handbook of applied cryptography
  */
 void barret_reduction(uint16_t* x, uint16_t* m, uint16_t* mew, uint16_t* r) {
-    uint16_t k, x_size, i;
+    uint16_t k, x_size, m_size, i;
     uint16_t r1[MAX_SIZE];
     uint16_t q1[MAX_SIZE];
     uint16_t q2[MAX_SIZE];
@@ -471,8 +516,10 @@ void barret_reduction(uint16_t* x, uint16_t* m, uint16_t* mew, uint16_t* r) {
     uint16_t temp2[MAX_SIZE];
     k = m[0];
     x_size = x[0];
+    m_size = m[0];
     rsh_radix(x, k - ONE, q1);
-    sign_extend(x, (uint16_t)(2*k) - x_size);
+    if (x_size < 2*k)
+        sign_extend(x, (uint16_t)(2*k) - x_size);
     mp_mult(mew, q1, q2);
     rsh_radix(q2, k + ONE, q3);
     mp_copy(x, r1);
@@ -493,12 +540,80 @@ void barret_reduction(uint16_t* x, uint16_t* m, uint16_t* mew, uint16_t* r) {
         mp_copy(temp, r);
     }
     x[0] = x_size;
+    m[0] = m_size;
     remove_leading_zeros(r);
+}
+
+/*
+ * Montgomery multiplication
+ * Algorithm 14.36 - Handbook of applied cryptography
+ */
+uint32_t mont_mult(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uint16_t *a) {
+    uint16_t i;
+    uint16_t ui;
+    uint32_t t;
+    uint16_t temp[MAX_SIZE];
+    uint16_t temp2[MAX_SIZE];
+    uint16_t temp3[MAX_SIZE];
+    if (!is_gteq(m, x) || !is_gteq(m,y))
+        return FAILURE;
+    for (i = 0; i <= x[0]; i++) {
+        a[i + 1] = 0;
+    }
+    a[0] = x[0] + ONE;
+    for (i = 0; i < x[0]; i++) {
+        ui = a[1] + ((uint16_t)(x[i + 1]) * y[1]);
+        ui = (uint16_t)(ui * m_prime[1]);
+        mp_mult_scalar(y, x[i+1], temp);
+        mp_mult_scalar(m, ui, temp2);
+        mp_add(temp, temp2, temp3);
+        mp_add(temp3, a, temp);
+        rsh_radix(temp, 1, a);
+    }
+    if (is_gteq(a, m)) {
+        mp_sub(a, m, temp);
+        mp_copy(temp, a);
+    }
+    return SUCCESS;
+}
+
+uint32_t mont_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16_t *R_mod_m, uint16_t *R_square_mod_m, uint16_t *a) {
+    uint16_t x_[MAX_SIZE];
+    uint16_t temp[MAX_SIZE];
+    uint16_t one[MAX_SIZE] = {1, 1};
+    int32_t t, i, j;
+    if (!is_gteq(m, x))
+        return FAILURE;
+
+    mont_mult(x, R_square_mod_m, m, m_prime, x_);
+    mp_copy(R_mod_m, a);
+    t = 32 - __builtin_clz(e[e[0]]);
+    for (i = e[0]; i >= 1; i--) {
+        for (j = t-1; j >=0; j--) {
+            mont_mult(a, a, m, m_prime, temp);
+            mp_copy(temp, a);
+            if (e[i] & (1 << j)) {
+                mont_mult(a, x_, m, m_prime, temp);
+                mp_copy(temp, a);
+            }
+        }
+        t = 16;
+    }
+    mont_mult(a, one, m, m_prime, temp);
+    mp_copy(temp, a);
+    return SUCCESS;
 }
 
 uint32_t is_gteq(uint16_t *x, uint16_t *y) {
     uint16_t i;
     uint16_t larger = x[0] > y[0] ? x[0] : y[0];
+    uint16_t x_size = x[0];
+    uint16_t y_size = y[0];
+
+    if (x[0] > y[0])
+        sign_extend(y, x[0] - y[0]);
+    else if (x[0] < y[0])
+        sign_extend(x, y[0] - x[0]);
 
     for (i = larger; i > 0; i--) {
         if (x[i] > y[i])
@@ -506,6 +621,8 @@ uint32_t is_gteq(uint16_t *x, uint16_t *y) {
         if (x[i] < y[i])
             return FALSE;
     }
+    x[0] = x_size;
+    y[0] = y_size;
     /* equal */
     return TRUE;
 }
@@ -513,6 +630,13 @@ uint32_t is_gteq(uint16_t *x, uint16_t *y) {
 uint32_t is_gt(uint16_t *x, uint16_t *y) {
     uint16_t i;
     uint16_t larger = x[0] > y[0] ? x[0] : y[0];
+    uint16_t x_size = x[0];
+    uint16_t y_size = y[0];
+
+    if (x[0] > y[0])
+        sign_extend(y, x[0] - y[0]);
+    else if (x[0] < y[0])
+        sign_extend(x, y[0] - x[0]);
 
     for (i = larger; i > 0; i--) {
         if (x[i] > y[i])
@@ -520,19 +644,32 @@ uint32_t is_gt(uint16_t *x, uint16_t *y) {
         if (x[i] < y[i])
             return FALSE;
     }
+    x[0] = x_size;
+    y[0] = y_size;
     /* equal */
     return FALSE;
 }
 
 uint32_t is_equal(uint16_t *x, uint16_t *y) {
     uint16_t i;
-    if (x[0] != y[0])
-        return FALSE;
-    for (i = 1; i <= x[0]; i++)
-        if (x[i] != y[i])
-            return FALSE;
-
-    return TRUE;
+    uint16_t x_size = x[0];
+    uint16_t y_size = y[0];
+    remove_leading_zeros(x);
+    remove_leading_zeros(y);
+    uint16_t is_equal = TRUE;
+    if (x[0] != y[0]) {
+        is_equal = FALSE;
+    } else {
+        for (i = 1; i <= x[0]; i++) {
+            if (x[i] != y[i]) {
+                is_equal = FALSE;
+                break;
+            }
+        }
+    }
+    x[0] = x_size;
+    y[0] = y_size;
+    return is_equal;
 }
 
 uint32_t is_zero(uint16_t *x) {
