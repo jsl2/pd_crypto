@@ -217,21 +217,21 @@ void mp_square(uint16_t *x, uint16_t *w) {
     }
     for (i = 0; i < 2 * x[0]; i++)
         w[i + 1] = 0;
-    for (i = 0; i < x[0]; i++){
-        uv = (uint64_t)w[2*i + 1] + (uint64_t)x[i + 1] * (uint64_t)x[i + 1];
-        w[2*i + 1] = (uint16_t)uv;
-        c = (uint32_t)(uv >> 16);
+    for (i = 0; i < x[0]; i++) {
+        uv = (uint64_t) w[2 * i + 1] + (uint64_t) x[i + 1] * (uint64_t) x[i + 1];
+        w[2 * i + 1] = (uint16_t) uv;
+        c = (uint32_t) (uv >> 16);
         for (j = i + ONE; j < x[0]; j++) {
-            uv = (uint64_t)w[i + j + 1] + (2 * (uint64_t)x[j + 1] * (uint64_t)x[i + 1]) + (uint64_t)c;
-            w[i + j + 1] = (uint16_t)uv;
-            c = (uint32_t)(uv >> 16);
+            uv = (uint64_t) w[i + j + 1] + (2 * (uint64_t) x[j + 1] * (uint64_t) x[i + 1]) + (uint64_t) c;
+            w[i + j + 1] = (uint16_t) uv;
+            c = (uint32_t) (uv >> 16);
         }
-        w[i + x[0] + 1] = (uint16_t)(uv >> 16);
+        w[i + x[0] + 1] = (uint16_t) (uv >> 16);
         if ((uv >> 32) > 0) {
-            w[i + x[0] + 2] = (uint16_t)(uv >> 32);
+            w[i + x[0] + 2] = (uint16_t) (uv >> 32);
         }
     }
-    w[0] = (uint16_t)2*x[0];
+    w[0] = (uint16_t) 2 * x[0];
     remove_leading_zeros(w);
 }
 
@@ -338,8 +338,14 @@ void binary_extended_gcd(uint16_t *x, uint16_t *y, uint16_t *a, uint16_t *b, uin
     }
     mp_copy(x_, u);
     mp_copy(y_, v);
-    A[0] = 1; B[0] = 1; C[0] = 1; D[0] = 1;
-    A[1] = 1; B[1] = 0; C[1] = 0; D[1] = 1;
+    A[0] = 1;
+    B[0] = 1;
+    C[0] = 1;
+    D[0] = 1;
+    A[1] = 1;
+    B[1] = 0;
+    C[1] = 0;
+    D[1] = 1;
     while (IS_EVEN(u[1])) {
         mp_diveq2(u);
         if (IS_EVEN(A[1]) && IS_EVEN(B[1])) {
@@ -442,7 +448,7 @@ void rsh_radix(const uint16_t *x, uint16_t sh, uint16_t *w) {
 
 
 /*
- * Multiple-precision division
+ * Multiple-precision division - signed only
  * Algorithm 14.20 - Handbook of applied cryptography
  */
 void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
@@ -481,13 +487,14 @@ void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
             q[i - t] = NEG_ONE;
         else
             q[i - t] = (uint16_t) ((((uint32_t) r[i + 1] << 16) + r[i]) / y[t + 1]);
-        while ((uint64_t) q[i - t] * (((uint64_t) (y[t + 1]) << 16) + y[t]) >
-               ((uint64_t) x[i + 1] << 32) + ((uint64_t) x[i] << 16) + ((uint64_t) x[i - 1]))
+        while (((uint64_t) q[i - t] * (((uint64_t) (y[t + 1]) << 16) + y[t])) >
+               ((uint64_t) r[i + 1] << 32) + ((uint64_t) r[i] << 16) + ((uint64_t) r[i - 1]))
             q[i - t] -= 1;
+
         lsh_radix(y, i - t - ONE, temp2);
         mp_mult_scalar(temp2, q[i - t], temp);
-        if (temp[0] < x[0])
-            zero_pad(temp, x[0] - temp[0]);
+        if (temp[0] < r[0])
+            zero_pad(temp, r[0] - temp[0]);
         mp_sub(r, temp, temp3);
         if (IS_NEGATIVE(temp3[temp3[0]])) {
             mp_add(temp3, temp2, r);
@@ -505,7 +512,7 @@ void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
  * Barrett modular reduction
  * Algorithm 14.42 - Handbook of applied cryptography
  */
-void barret_reduction(uint16_t* x, uint16_t* m, uint16_t* mew, uint16_t* r) {
+void barret_reduction(uint16_t *x, uint16_t *m, uint16_t *mew, uint16_t *r) {
     uint16_t k, x_size, m_size, i;
     uint16_t r1[MAX_SIZE];
     uint16_t q1[MAX_SIZE];
@@ -518,8 +525,8 @@ void barret_reduction(uint16_t* x, uint16_t* m, uint16_t* mew, uint16_t* r) {
     x_size = x[0];
     m_size = m[0];
     rsh_radix(x, k - ONE, q1);
-    if (x_size < 2*k)
-        sign_extend(x, (uint16_t)(2*k) - x_size);
+    if (x_size < 2 * k)
+        sign_extend(x, (uint16_t) (2 * k) - x_size);
     mp_mult(mew, q1, q2);
     rsh_radix(q2, k + ONE, q3);
     mp_copy(x, r1);
@@ -545,7 +552,7 @@ void barret_reduction(uint16_t* x, uint16_t* m, uint16_t* mew, uint16_t* r) {
 }
 
 /*
- * Montgomery multiplication
+ * Montgomery multiplication - signed only
  * Algorithm 14.36 - Handbook of applied cryptography
  */
 uint32_t mont_mult(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uint16_t *a) {
@@ -555,16 +562,16 @@ uint32_t mont_mult(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uin
     uint16_t temp[MAX_SIZE];
     uint16_t temp2[MAX_SIZE];
     uint16_t temp3[MAX_SIZE];
-    if (!is_gteq(m, x) || !is_gteq(m,y))
+    if (!is_gteq(m, x) || !is_gteq(m, y))
         return FAILURE;
     for (i = 0; i <= x[0]; i++) {
         a[i + 1] = 0;
     }
     a[0] = x[0] + ONE;
     for (i = 0; i < x[0]; i++) {
-        ui = a[1] + ((uint16_t)(x[i + 1]) * y[1]);
-        ui = (uint16_t)(ui * m_prime[1]);
-        mp_mult_scalar(y, x[i+1], temp);
+        ui = a[1] + ((uint16_t) (x[i + 1]) * y[1]);
+        ui = (uint16_t) (ui * m_prime[1]);
+        mp_mult_scalar(y, x[i + 1], temp);
         mp_mult_scalar(m, ui, temp2);
         mp_add(temp, temp2, temp3);
         mp_add(temp3, a, temp);
@@ -577,7 +584,8 @@ uint32_t mont_mult(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uin
     return SUCCESS;
 }
 
-uint32_t mont_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16_t *R_mod_m, uint16_t *R_square_mod_m, uint16_t *a) {
+uint32_t mont_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16_t *R_mod_m, uint16_t *R_square_mod_m,
+                  uint16_t *a) {
     uint16_t x_[MAX_SIZE];
     uint16_t temp[MAX_SIZE];
     uint16_t one[MAX_SIZE] = {1, 1};
@@ -589,7 +597,7 @@ uint32_t mont_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint
     mp_copy(R_mod_m, a);
     t = 32 - __builtin_clz(e[e[0]]);
     for (i = e[0]; i >= 1; i--) {
-        for (j = t-1; j >=0; j--) {
+        for (j = t - 1; j >= 0; j--) {
             mont_mult(a, a, m, m_prime, temp);
             mp_copy(temp, a);
             if (e[i] & (1 << j)) {

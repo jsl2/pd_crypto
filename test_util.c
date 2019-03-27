@@ -2,7 +2,8 @@
 #include <stdio.h>
 #include "util.h"
 
-#define RUN_TEST(test, x, y) {if (is_equal(x,y) == TRUE) { printf(test); printf(" passed!\n"); } else { printf(test); printf(" failed!\n");} }
+#define RUN_TEST(test, x, y) {if (is_equal(x,y) == TRUE) { printf(test); printf(" passed!\n"); } else { \
+        printf(test); printf(" failed!\n"); printf("Expected: "); print_radix(y); printf("Got: "); print_radix(x);} }
 
 uint16_t a[MAX_SIZE] = {0x8, 0x4867, 0x3767, 0x2d60, 0xa503, 0x7fe4, 0xa540, 0xc070, 0x67e7};
 uint16_t b[MAX_SIZE] = {0x8, 0x78f9, 0x4952, 0x2293, 0xabbe, 0xb0c7, 0x2fb9, 0xe566, 0x4c4c};
@@ -57,7 +58,7 @@ uint16_t test_array[MAX_SIZE] = {0};
 uint16_t test_array2[MAX_SIZE] = {0};
 uint16_t test_array3[MAX_SIZE] = {0};
 
-int main(void) {
+void test_addition() {
     mp_add(a, b, test_array);
     RUN_TEST("Addition test a + b", test_array, j);
 
@@ -87,7 +88,9 @@ int main(void) {
 
     mp_add(neg_one, one, test_array);
     RUN_TEST("Addition test -1 + 1", test_array, zero);
+}
 
+void test_subtraction() {
     mp_sub(zero, neg_one, test_array);
     RUN_TEST("Subtraction test 0 - -1", test_array, one);
 
@@ -114,39 +117,34 @@ int main(void) {
 
     mp_sub(a, b, test_array);
     RUN_TEST("Subtraction test a - b", test_array, k);
+}
 
+void test_multiplication() {
     mp_mult(a, b, test_array);
     RUN_TEST("Multiplication test a * b", test_array, i);
 
     mp_mult_scalar(a, s, test_array);
     RUN_TEST("Multiplication test s * a", test_array, l);
 
+    mp_square(p, test_array);
+    RUN_TEST("p*p", test_array, p_square);
+}
+
+void test_division() {
     mp_div(a, m, test_array, test_array2);
     RUN_TEST("Division test a / m", test_array, g);
 
     mp_div(a, b, test_array, test_array2);
     RUN_TEST("Modulo test a mod b", test_array2, h);
+}
 
-    binary_extended_gcd(b, a, test_array, test_array2, test_array3);
-    RUN_TEST("GCD test: gcd(a,b)", test_array3, e);
-
-    mul_inv(a, b, test_array);
-    RUN_TEST("Modular inverse a^{-1} mod b", test_array, f);
-
-    mp_div(R, q, test_array2, test_array3);
-    barret_reduction(p, q, test_array2, test_array);
-    RUN_TEST("p mod q (barret reduction)", test_array, p_mod_q);
-
-    mp_square(p, test_array);
-    RUN_TEST("p*p", test_array, p_square);
-
+void test_montgomery() {
+    // Test montgomery exponentiation and multiplication
     mp_square(R, test_array);
     RUN_TEST("R*R", test_array, R_square);
 
-    /* This divide needs debugging!
-     * mp_div(R_square, r, test_array, test_array2);
+    mp_div(R_square, r, test_array, test_array2);
     RUN_TEST("R*R mod r", test_array2, R_square_mod_r);
-    print_radix(test_array);*/
 
     mul_inv(r, base, test_array);
     twos_complement(test_array, test_array2);
@@ -158,5 +156,24 @@ int main(void) {
 
     mont_exp(p, q, r, r_prime, R_mod_r, R_square_mod_r, test_array);
     RUN_TEST("Montgomery exponentiation p^q mod r", test_array, p_pow_q_mod_r);
+}
+
+int main(void) {
+    test_addition();
+    test_subtraction();
+    test_multiplication();
+    test_division();
+
+    binary_extended_gcd(b, a, test_array, test_array2, test_array3);
+    RUN_TEST("GCD test: gcd(a,b)", test_array3, e);
+
+    mul_inv(a, b, test_array);
+    RUN_TEST("Modular inverse a^{-1} mod b", test_array, f);
+
+    mp_div(R, q, test_array2, test_array3);
+    barret_reduction(p, q, test_array2, test_array);
+    RUN_TEST("p mod q (barret reduction)", test_array, p_mod_q);
+
+    test_montgomery();
     return 0;
 }
