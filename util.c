@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "util.h"
 
 void print_radix(uint16_t *x) {
@@ -113,7 +114,8 @@ void mp_add(uint16_t *x, uint16_t *y, uint16_t *w) {
     n = x[0];
     for (i = 0; i < n; i++) {
         w[i + 1] = x[i + 1] + y[i + 1] + c;
-        c = (uint16_t) (w[i + 1] < x[i + 1]);
+        if (!(i > 0 && (!w[i + 1]) && c))
+            c = (uint16_t) (w[i + 1] < x[i + 1]);
     }
     w[0] = n;
     if (c > 0 && !x_neg) {
@@ -121,6 +123,45 @@ void mp_add(uint16_t *x, uint16_t *y, uint16_t *w) {
         w[0]++;
     } else if (!x_neg && IS_NEGATIVE(w[n])) {
         w[n + 1] = 0;
+        w[0]++;
+    }
+    x[0] = x_size;
+    y[0] = y_size;
+}
+
+/*
+ * Unsigned arbitrary precision addition.
+ * Size of output may exceed size of largest input.
+ * If x and y have different sign, output will not exceed size of largest input.
+ *
+ * Based on algorithm 14.7 - Handbook of applied cryptography
+ */
+void mp_add_u(uint16_t *x, uint16_t *y, uint16_t *w) {
+    uint16_t c = 0;
+    uint16_t i = 0;
+    uint16_t n = 0;
+    uint16_t x_neg;
+    uint16_t y_neg;
+    uint16_t temp[MAX_SIZE] = {0};
+    uint16_t x_size = x[0];
+    uint16_t y_size = y[0];
+
+    if (x_size != y_size) {
+        if (x_size > y_size)
+            zero_pad(y, x_size - y_size);
+        else
+            zero_pad(x, y_size - x_size);
+    }
+
+    n = x[0];
+    for (i = 0; i < n; i++) {
+        w[i + 1] = x[i + 1] + y[i + 1] + c;
+        if (!(i > 0 && (!w[i + 1]) && c))
+            c = (uint16_t) (w[i + 1] < x[i + 1]);
+    }
+    w[0] = n;
+    if (c > 0) {
+        w[n + 1] = 1;
         w[0]++;
     }
     x[0] = x_size;
@@ -551,6 +592,91 @@ void barret_reduction(uint16_t *x, uint16_t *m, uint16_t *mew, uint16_t *r) {
     remove_leading_zeros(r);
 }
 
+
+/*
+ * Multiple-precision multiplication - only computed up to limit number of words
+ * Returns x * y mod m where m is (2^16)^n
+ * Algorithm 14.12 - Handbook of applied cryptography
+ */
+void mp_mult_l(uint16_t *x, uint16_t *y, uint16_t *w, uint16_t words) {
+    uint16_t i, j;
+    uint16_t c;
+    uint32_t uv = 0;
+    for (i = 0; i <= words; i++)
+        w[i + 1] = 0;
+    for (i = 0; i < y[0]; i++) {
+        c = 0;
+        for (j = 0; j < x[0]; j++) {
+            if (i + j + 1 > words)
+                break;
+            uv = w[i + j + 1] + ((uint32_t) x[j + 1]) * ((uint32_t) y[i + 1]) + c;
+            w[i + j + 1] = (uint16_t) uv;
+            c = (uint16_t) (uv >> 16);
+        }
+        if (i + x[0] + 1 <= words)
+            w[i + x[0] + 1] = (uint16_t) (uv >> 16);
+    }
+    w[0] = words;
+    remove_leading_zeros(w);
+}
+
+/*
+ * DH montgomery product. R = 2^4096
+ * */
+void dh_mon_pro(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uint16_t *u) {
+    uint16_t temp[MAX_SIZE] = {0};
+    uint16_t temp2[MAX_SIZE] = {0};
+    uint16_t temp3[MAX_SIZE] = {0};
+
+    mp_mult(x, y, temp);
+    mp_mult_l(temp, m_prime, temp2, 256);
+    mp_mult(temp2, m, temp3);
+    mp_add_u(temp, temp3, temp2);
+    rsh_radix(temp2, 256, u);
+
+    if (is_gteq_u(u, m)) {
+        mp_sub(u, m, temp);
+        mp_copy(temp, u);
+    }
+    remove_leading_zeros(u);
+}
+
+/*
+ * DH montgomery exponentiation. R = 2^4096
+ * */
+void dh_mon_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16_t *R, uint16_t *a) {
+    uint16_t x_[MAX_SIZE];
+    uint16_t temp[MAX_SIZE];
+    uint16_t temp2[MAX_SIZE];
+    uint16_t one[MAX_SIZE] = {1, 1};
+    int32_t t, i, j;
+    static int16_t count = 0;
+
+    t = 32 - __builtin_clz(e[e[0]]);
+
+    // Not use montgomery multiplication for this step
+    // mont_mult(a, R_square_mod_m, m, m_prime, x_);
+    lsh_radix(x, 256, temp);
+    mp_div(temp, m, temp2, x_);
+    mp_div(R, m, temp2, a);
+
+    for (i = e[0]; i >= 1; i--) {
+        for (j = t - 1; j >= 0; j--) {
+            dh_mon_pro(a, a, m, m_prime, temp);
+            mp_copy(temp, a);
+            count += 1;
+            if (e[i] & (1 << j)) {
+                dh_mon_pro(a, x_, m, m_prime, temp);
+                mp_copy(temp, a);
+            }
+
+        }
+        t = 16;
+    }
+    dh_mon_pro(a, one, m, m_prime, temp);
+    mp_copy(temp, a);
+}
+
 /*
  * Montgomery multiplication - signed only
  * Algorithm 14.36 - Handbook of applied cryptography
@@ -563,6 +689,8 @@ uint32_t mont_mult(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uin
     uint16_t temp2[MAX_SIZE];
     uint16_t temp3[MAX_SIZE];
     if (!is_gteq(m, x) || !is_gteq(m, y))
+        return FAILURE;
+    if (m[0] != x[0] || m[0] != y[0])
         return FAILURE;
     for (i = 0; i <= x[0]; i++) {
         a[i + 1] = 0;
@@ -584,18 +712,30 @@ uint32_t mont_mult(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uin
     return SUCCESS;
 }
 
-uint32_t mont_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16_t *R_mod_m, uint16_t *R_square_mod_m,
+/*
+ * Montgomery exponentiation
+ * Algorithm 14.94 - Handbook of applied cryptography
+ *
+ * Modified to allow base with less than digits than modulo
+ */
+uint32_t mont_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16_t *R_mod_m, uint16_t *R,
                   uint16_t *a) {
     uint16_t x_[MAX_SIZE];
     uint16_t temp[MAX_SIZE];
+    uint16_t temp2[MAX_SIZE];
     uint16_t one[MAX_SIZE] = {1, 1};
     int32_t t, i, j;
     if (!is_gteq(m, x))
         return FAILURE;
 
-    mont_mult(x, R_square_mod_m, m, m_prime, x_);
-    mp_copy(R_mod_m, a);
+    mp_copy(x, a);
     t = 32 - __builtin_clz(e[e[0]]);
+
+    // Not use montgomery multiplication for this step
+    // mont_mult(a, R_square_mod_m, m, m_prime, x_);
+    mp_mult(x, R, temp);
+    mp_div(temp, m, temp2, x_);
+    mp_copy(R_mod_m, a);
     for (i = e[0]; i >= 1; i--) {
         for (j = t - 1; j >= 0; j--) {
             mont_mult(a, a, m, m_prime, temp);
@@ -622,6 +762,29 @@ uint32_t is_gteq(uint16_t *x, uint16_t *y) {
         sign_extend(y, x[0] - y[0]);
     else if (x[0] < y[0])
         sign_extend(x, y[0] - x[0]);
+
+    for (i = larger; i > 0; i--) {
+        if (x[i] > y[i])
+            return TRUE;
+        if (x[i] < y[i])
+            return FALSE;
+    }
+    x[0] = x_size;
+    y[0] = y_size;
+    /* equal */
+    return TRUE;
+}
+
+uint32_t is_gteq_u(uint16_t *x, uint16_t *y) {
+    uint16_t i;
+    uint16_t larger = x[0] > y[0] ? x[0] : y[0];
+    uint16_t x_size = x[0];
+    uint16_t y_size = y[0];
+
+    if (x[0] > y[0])
+        zero_pad(y, x[0] - y[0]);
+    else if (x[0] < y[0])
+        zero_pad(x, y[0] - x[0]);
 
     for (i = larger; i > 0; i--) {
         if (x[i] > y[i])

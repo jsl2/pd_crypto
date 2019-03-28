@@ -15,7 +15,7 @@
 #define SUCCESS 1
 #define FAILURE 0
 
-#define MAX_SIZE 512
+#define MAX_SIZE 1024
 
 void print_radix(uint16_t* x);
 
@@ -43,13 +43,17 @@ void barret_reduction(uint16_t* x, uint16_t* m, uint16_t* mew, uint16_t* r);
 
 void twos_complement(uint16_t *x, uint16_t *w);
 
+void dh_mon_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16_t *R, uint16_t *a);
+
 uint32_t mont_mult(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uint16_t *a);
 
-uint32_t mont_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16_t *R_mod_m, uint16_t *R_square_mod_m, uint16_t *a);
+uint32_t mont_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16_t *R_mod_m, uint16_t *R, uint16_t *a);
 
 uint32_t is_equal(uint16_t *x, uint16_t *y);
 
 uint32_t is_gteq(uint16_t *x, uint16_t *y);
+
+uint32_t is_gteq_u(uint16_t *x, uint16_t *y);
 
 uint32_t is_gt(uint16_t *x, uint16_t *y);
 
