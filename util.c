@@ -156,8 +156,7 @@ void mp_add_u(uint16_t *x, uint16_t *y, uint16_t *w) {
     n = x[0];
     for (i = 0; i < n; i++) {
         w[i + 1] = x[i + 1] + y[i + 1] + c;
-        if (!(i > 0 && (!w[i + 1]) && c))
-            c = (uint16_t) (w[i + 1] < x[i + 1]);
+        c = (uint16_t)(((uint32_t)x[i + 1] + (uint32_t)y[i + 1] + c) > 0xFFFF);
     }
     w[0] = n;
     if (c > 0) {
@@ -476,7 +475,7 @@ void lsh_radix(const uint16_t *x, uint16_t sh, uint16_t *w) {
 void rsh_radix(const uint16_t *x, uint16_t sh, uint16_t *w) {
     uint16_t i;
     if (sh >= x[0]) {
-        w[0] = 1;
+        w[0] = 0;
         w[1] = 0;
         return;
     }
@@ -610,11 +609,11 @@ void mp_mult_l(uint16_t *x, uint16_t *y, uint16_t *w, uint16_t words) {
             if (i + j + 1 > words)
                 break;
             uv = w[i + j + 1] + ((uint32_t) x[j + 1]) * ((uint32_t) y[i + 1]) + c;
-            w[i + j + 1] = (uint16_t) uv;
-            c = (uint16_t) (uv >> 16);
+            w[i + j + 1] = (uint16_t) (uv&0xFFFF);
+            c = (uint16_t) ((uv >> 16)&0xFFFF);
         }
         if (i + x[0] + 1 <= words)
-            w[i + x[0] + 1] = (uint16_t) (uv >> 16);
+            w[i + x[0] + 1] = (uint16_t) ((uv >> 16)&0xFFFF);
     }
     w[0] = words;
     remove_leading_zeros(w);
@@ -627,18 +626,19 @@ void dh_mon_pro(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uint16
     uint16_t temp[MAX_SIZE] = {0};
     uint16_t temp2[MAX_SIZE] = {0};
     uint16_t temp3[MAX_SIZE] = {0};
-
+    uint16_t res[MAX_SIZE] = {0};
     mp_mult(x, y, temp);
     mp_mult_l(temp, m_prime, temp2, 256);
     mp_mult(temp2, m, temp3);
     mp_add_u(temp, temp3, temp2);
-    rsh_radix(temp2, 256, u);
+    rsh_radix(temp2, 256, res);
 
-    if (is_gteq_u(u, m)) {
-        mp_sub(u, m, temp);
-        mp_copy(temp, u);
+    if (is_gteq_u(res, m)) {
+        mp_sub(res, m, temp);
+        mp_copy(temp, res);
     }
-    remove_leading_zeros(u);
+    remove_leading_zeros(res);
+    mp_copy(res, u);
 }
 
 /*
@@ -669,12 +669,15 @@ void dh_mon_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16
                 dh_mon_pro(a, x_, m, m_prime, temp);
                 mp_copy(temp, a);
             }
-
         }
         t = 16;
     }
     dh_mon_pro(a, one, m, m_prime, temp);
     mp_copy(temp, a);
+    remove_leading_zeros(m);
+    remove_leading_zeros(m_prime);
+    remove_leading_zeros(x);
+    remove_leading_zeros(e);
 }
 
 /*

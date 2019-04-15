@@ -31,6 +31,8 @@ void mp_sub(uint16_t* x, uint16_t* y, uint16_t* w);
 
 void mp_mult(uint16_t* x, uint16_t* y, uint16_t* w);
 
+void mp_mult_l(uint16_t *x, uint16_t *y, uint16_t *w, uint16_t words);
+
 void mp_square(uint16_t *x, uint16_t *w);
 
 void mp_mult_scalar(uint16_t* x, uint16_t y, uint16_t* w);
@@ -60,5 +62,7 @@ uint32_t is_gt(uint16_t *x, uint16_t *y);
 uint32_t is_zero(uint16_t *x);
 
 void remove_leading_zeros(uint16_t *x);
+
+void dh_mon_pro(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uint16_t *u);
 
 #endif
