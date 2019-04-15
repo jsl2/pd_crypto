@@ -9,7 +9,7 @@ void print_radix(uint16_t *x) {
     for (i = 1; i < x[0]; i++) {
         printf("%#06x, ", x[i]);
     }
-    printf("%#06x}\n", x[x[0]]);
+    printf("%#06x};\n", x[x[0]]);
 }
 
 void print_radix_number(uint16_t *x) {
@@ -115,7 +115,7 @@ void mp_add(uint16_t *x, uint16_t *y, uint16_t *w) {
     for (i = 0; i < n; i++) {
         w[i + 1] = x[i + 1] + y[i + 1] + c;
         if (!(i > 0 && (!w[i + 1]) && c))
-            c = (uint16_t) (w[i + 1] < x[i + 1]);
+            c = (uint16_t)(((uint32_t)x[i + 1] + (uint32_t)y[i + 1] + c) > 0xFFFF);
     }
     w[0] = n;
     if (c > 0 && !x_neg) {
@@ -214,6 +214,35 @@ void mp_sub(uint16_t *x, uint16_t *y, uint16_t *w) {
         w[0]++;
         w[n + 1] = NEG_ONE;
     }
+    x[0] = x_size;
+    y[0] = y_size;
+}
+
+void mp_sub_u(uint16_t *x, uint16_t *y, uint16_t *w) {
+    uint16_t i = 0;
+    uint16_t c = 0;
+    uint16_t n;
+    uint16_t temp[MAX_SIZE] = {0};
+    uint16_t x_neg;
+    uint16_t y_neg;
+    uint16_t x_size = x[0];
+    uint16_t y_size = y[0];
+
+    if (x_size != y_size) {
+        if (x_size > y_size) {
+            zero_pad(y, x_size - y_size);
+        } else {
+            zero_pad(x, y_size - x_size);
+        }
+    }
+
+    n = x[0];
+
+    for (i = 0; i < n; i++) {
+        w[i + 1] = x[i + 1] - y[i + 1] - c;
+        c = (uint16_t) ((y[i + 1] + c) > x[i + 1]);
+    }
+    w[0] = x[0];
     x[0] = x_size;
     y[0] = y_size;
 }
@@ -530,7 +559,6 @@ void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
         while (((uint64_t) q[i - t] * (((uint64_t) (y[t + 1]) << 16) + y[t])) >
                ((uint64_t) r[i + 1] << 32) + ((uint64_t) r[i] << 16) + ((uint64_t) r[i - 1]))
             q[i - t] -= 1;
-
         lsh_radix(y, i - t - ONE, temp2);
         mp_mult_scalar(temp2, q[i - t], temp);
         if (temp[0] < r[0])
@@ -634,7 +662,7 @@ void dh_mon_pro(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uint16
     rsh_radix(temp2, 256, res);
 
     if (is_gteq_u(res, m)) {
-        mp_sub(res, m, temp);
+        mp_sub_u(res, m, temp);
         mp_copy(temp, res);
     }
     remove_leading_zeros(res);
@@ -653,9 +681,6 @@ void dh_mon_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16
     static int16_t count = 0;
 
     t = 32 - __builtin_clz(e[e[0]]);
-
-    // Not use montgomery multiplication for this step
-    // mont_mult(a, R_square_mod_m, m, m_prime, x_);
     lsh_radix(x, 256, temp);
     mp_div(temp, m, temp2, x_);
     mp_div(R, m, temp2, a);
