@@ -6,7 +6,7 @@
 //  Copyright © 2019 Augustin MOUTARLIER. All rights reserved.
 //
 
-#include "Galois Multiplication.h"
+#include "Galois_Multiplication.h"
 
 // Method 1 corresponding to Algorithm 1 from paper, where W corresponds to Y in algorithm
 
@@ -14,7 +14,66 @@
 //uint16_t W[8];
 //uint16_t Z[8];
 unsigned char R[16] = "\xe1\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+uint32_t cst = 0xffffffff;
 
+// Increment function for Y
+void incr(unsigned char *Y){
+    if (Y[12] == 0xff) {
+        printf("New Pair of Key / IV is required");
+    }
+    else if ((Y[15] == 0xff) & (Y[14] != 0xff)) {
+        Y[14] = Y[14] + 1;
+        if (Y[14]) {
+            Y[15] = 0x00;
+        }
+    }
+    else if ((Y[14] == 0xff) & (Y[15] == 0xff) & (Y[13] != 0xff)){
+        Y[13] = Y[13] + 1;
+        if (Y[13]) {
+            Y[14] = 0x00;
+            Y[15] = 0x00;
+        }
+    }
+    else if ((Y[13] == 0xff) & (Y[14] == 0xff) & (Y[15] == 0xff) & (Y[12] != 0xff)){
+        Y[12] = Y[12] + 1;
+        if (Y[12]) {
+            Y[13] = 0x00;
+            Y[14] = 0x00;
+            Y[15] = 0x00;
+        }
+    }
+    else{
+        Y[15] = Y[15] + 1;
+    }
+}
+
+void incr_lenC(unsigned short *lenC){
+    
+    if ((lenC[7] == 0xff80) & (lenC[6] != 0xffff)) {
+        lenC[6] = lenC[6] + 1;
+        if (lenC[6]) {
+            lenC[7] = 0x0000;
+        }
+    }
+    else if ((lenC[6] == 0xffff) & (lenC[7] == 0xff80) & (lenC[5] != 0xffff)){
+        lenC[5] = lenC[5] + 1;
+        if (lenC[5]) {
+            lenC[6] = 0x0000;
+            lenC[7] = 0x0000;
+        }
+    }
+    else if ((lenC[5] == 0xffff) & (lenC[6] == 0xffff) & (lenC[7] == 0xff80) & (lenC[4] != 0xffff)){
+        lenC[4] = lenC[4] + 1;
+        if (lenC[4]) {
+            lenC[5] = 0x0000;
+            lenC[6] = 0x0000;
+            lenC[7] = 0x0000;
+        }
+    }
+    else{
+        lenC[7] = lenC[7] + 128;
+    }
+}
 
 // The following function is right-shifting a 128bit number that is represented as an array of 8 elements of 16 bits.
 void right_shift(uint8_t *V){
