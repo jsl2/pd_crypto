@@ -277,13 +277,12 @@ void mp_square(uint16_t *x, uint16_t *w) {
     uint16_t i, j;
     uint32_t c;
     uint64_t uv = 0;
-    uint16_t temp[MAX_SIZE] = {0};
-
+    uint64_t temp = 0;
+    uint16_t t[MAX_SIZE] = {0};
     if (IS_NEGATIVE(x[x[0]])) {
-        twos_complement(x, temp);
-        mp_square(temp, w);
-        return;
+        zero_pad(x, 1);
     }
+
     for (i = 0; i < 2 * x[0]; i++)
         w[i + 1] = 0;
     for (i = 0; i < x[0]; i++) {
@@ -291,14 +290,15 @@ void mp_square(uint16_t *x, uint16_t *w) {
         w[2 * i + 1] = (uint16_t) uv;
         c = (uint32_t) (uv >> 16);
         for (j = i + ONE; j < x[0]; j++) {
-            uv = (uint64_t) w[i + j + 1] + (2 * (uint64_t) x[j + 1] * (uint64_t) x[i + 1]) + (uint64_t) c;
+            uv = (uint64_t) w[i + j + 1];
+            temp = (uint64_t) x[j + 1] * (uint64_t) x[i + 1];
+            temp <<= 1;
+            uv += (temp + c);
             w[i + j + 1] = (uint16_t) uv;
             c = (uint32_t) (uv >> 16);
         }
         w[i + x[0] + 1] = (uint16_t) (uv >> 16);
-        if ((uv >> 32) > 0) {
-            w[i + x[0] + 2] = (uint16_t) (uv >> 32);
-        }
+        w[i + x[0] + 2] = (uint16_t) (uv >> 32);
     }
     w[0] = (uint16_t) 2 * x[0];
     remove_leading_zeros(w);
@@ -536,6 +536,7 @@ void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
             q[0] = 1;
             q[0] = 0;
             mp_copy(x, r);
+            remove_leading_zeros(r);
             return;
         } else {
             sign_extend(x, t - n);
