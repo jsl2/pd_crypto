@@ -365,15 +365,15 @@ void test_square_mod_n() {
 
 
 int main(void) {
-    //test_square_mod_n();
     test_bbs();
     /* Full test of Station to Station protocol */
-    /*test_sts();
+    test_sts();
 
     test_addition();
     test_subtraction();
     test_multiplication();
     test_division();
+    test_square_mod_n();
 
     binary_extended_gcd(b, a, test_array, test_array2, test_array3);
     RUN_TEST("GCD test: gcd(a,b)", test_array3, e);
@@ -385,6 +385,6 @@ int main(void) {
     barret_reduction(p, q, test_array2, test_array);
     RUN_TEST("p mod q (barret reduction)", test_array, p_mod_q);
 
-    test_montgomery();*/
+    test_montgomery();
     return 0;
 }

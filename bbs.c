@@ -18,7 +18,7 @@ void bbs(uint16_t* seed, uint16_t len, uint16_t* out) {
         mp_div(square, bbs_n, temp, xi);
         /* Take bottom 8 bits instead of single bit.
          * Proven limit of log2(log2(n)) bits (11 in this case) may be taken */
-        out[1 + (i >> 1)] |= ((xi[1] & 0x00FF) << (i & 0x1 ? 8 : 0));
+        out[1 + (i >> 1)] |= ((xi[1] & 0x00FF) << ((i & 0x1) << 3));
     }
     out[0] = (uint16_t)(len / 16);
 }
