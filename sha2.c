@@ -131,19 +131,19 @@ typedef u_int64_t sha2_word64;	/* Exactly 8 bytes */
 #if BYTE_ORDER == LITTLE_ENDIAN
 #define REVERSE32(w,x)	{ \
 	sha2_word32 tmp = (w); \
-	tmp = (tmp >> 16) | (tmp << 16); \
-	(x) = ((tmp & 0xff00ff00UL) >> 8) | ((tmp & 0x00ff00ffUL) << 8); \
+	tmp = (tmp >> 16u) | (tmp << 16u); \
+	(x) = ((tmp & 0xff00ff00UL) >> 8u) | ((tmp & 0x00ff00ffUL) << 8u); \
 }
 #define REVERSE64(w,x)	{ \
 	sha2_word64 tmp = (w); \
 	sha2_word64 tmp2=(sha2_word64)0xff00ff00UL,tmp3=(sha2_word64)0xffff0000UL; \
-	tmp2 = (tmp2 << 32) | tmp2; \
-	tmp3 = (tmp3 << 32) | tmp3; \
-	tmp = (tmp >> 32) | (tmp << 32); \
-	tmp = ((tmp & tmp2) >> 8) | \
-	      ((tmp & (tmp2 >> 8)) << 8); \
-	(x) = ((tmp & tmp3) >> 16) | \
-	      ((tmp & (tmp3 >> 16)) << 16); \
+	tmp2 = (tmp2 << 32u) | tmp2; \
+	tmp3 = (tmp3 << 32u) | tmp3; \
+	tmp = (tmp >> 32u) | (tmp << 32u); \
+	tmp = ((tmp & tmp2) >> 8u) | \
+	      ((tmp & (tmp2 >> 8u)) << 8u); \
+	(x) = ((tmp & tmp3) >> 16u) | \
+	      ((tmp & (tmp3 >> 16u)) << 16u); \
 }
 #endif /* BYTE_ORDER == LITTLE_ENDIAN */
 
@@ -208,10 +208,10 @@ typedef u_int64_t sha2_word64;	/* Exactly 8 bytes */
 #define Maj(x,y,z)	(((x) & (y)) ^ ((x) & (z)) ^ ((y) & (z)))
 
 /* Four of six logical functions used in SHA-256: */
-#define Sigma0_256(x)	(S32(2,  (x)) ^ S32(13, (x)) ^ S32(22, (x)))
-#define Sigma1_256(x)	(S32(6,  (x)) ^ S32(11, (x)) ^ S32(25, (x)))
-#define sigma0_256(x)	(S32(7,  (x)) ^ S32(18, (x)) ^ R(3 ,   (x)))
-#define sigma1_256(x)	(S32(17, (x)) ^ S32(19, (x)) ^ R(10,   (x)))
+#define Sigma0_256(x)	(S32(2u,  (x)) ^ S32(13u, (x)) ^ S32(22u, (x)))
+#define Sigma1_256(x)	(S32(6u,  (x)) ^ S32(11u, (x)) ^ S32(25u, (x)))
+#define sigma0_256(x)	(S32(7u,  (x)) ^ S32(18u, (x)) ^ R(3u ,   (x)))
+#define sigma1_256(x)	(S32(17u, (x)) ^ S32(19u, (x)) ^ R(10u,   (x)))
 
 /* Four of six logical functions used in SHA-384 and SHA-512: */
 #define Sigma0_512(x)	(S64(28, (x)) ^ S64(34, (x)) ^ S64(39, (x)))
@@ -486,14 +486,14 @@ void SHA256_Transform(SHA256_CTX* context, const sha2_word32* data) {
 
 	do {
 		/* Part of the message block expansion: */
-		s0 = W256[(j+1)&0x0f];
+		s0 = W256[(j+1)&0x0fu];
 		s0 = sigma0_256(s0);
-		s1 = W256[(j+14)&0x0f];	
+		s1 = W256[(j+14)&0x0fu];
 		s1 = sigma1_256(s1);
 
 		/* Apply the SHA-256 compression function to update a..h */
 		T1 = h + Sigma1_256(e) + Ch(e, f, g) + K256[j] + 
-		     (W256[j&0x0f] += s1 + W256[(j+9)&0x0f] + s0);
+		     (W256[j&0x0fu] += s1 + W256[(j+9)&0x0fu] + s0);
 		T2 = Sigma0_256(a) + Maj(a, b, c);
 		h = g;
 		g = f;
@@ -534,7 +534,7 @@ void SHA256_Update(SHA256_CTX* context, const sha2_byte *data, size_t len) {
 	/* Sanity check: */
 	assert(context != (SHA256_CTX*)0 && data != (sha2_byte*)0);
 
-	usedspace = (context->bitcount >> 3) % SHA256_BLOCK_LENGTH;
+	usedspace = (unsigned int)((context->bitcount >> 3) % SHA256_BLOCK_LENGTH);
 	if (usedspace > 0) {
 		/* Calculate how much free space is available in the buffer */
 		freespace = SHA256_BLOCK_LENGTH - usedspace;
@@ -580,7 +580,7 @@ void SHA256_Final(sha2_byte digest[], SHA256_CTX* context) {
 
 	/* If no digest buffer is passed, we don't bother doing this: */
 	if (digest != (sha2_byte*)0) {
-		usedspace = (context->bitcount >> 3) % SHA256_BLOCK_LENGTH;
+		usedspace = (unsigned int)((context->bitcount >> 3) % SHA256_BLOCK_LENGTH);
 #if BYTE_ORDER == LITTLE_ENDIAN
 		/* Convert FROM host byte order */
 		REVERSE64(context->bitcount,context->bitcount);
@@ -645,8 +645,8 @@ unsigned char *SHA256_End(SHA256_CTX* context, unsigned char buffer[]) {
 		SHA256_Final(digest, context);
 
 		for (i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-			*buffer++ = sha2_hex_digits[(*d & 0xf0) >> 4];
-			*buffer++ = sha2_hex_digits[*d & 0x0f];
+			*buffer++ = (unsigned char)sha2_hex_digits[(*d & 0xf0) >> 4];
+			*buffer++ = (unsigned char)sha2_hex_digits[*d & 0x0f];
 			d++;
 		}
 		*buffer = (char)0;

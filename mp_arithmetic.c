@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "util.h"
+#include "mp_arithmetic.h"
 
 void print_radix(uint16_t *x) {
     uint16_t i = 0;
@@ -28,7 +28,6 @@ void remove_leading_zeros(uint16_t *x) {
     for (i = x[0]; x[i] == 0 && i > 0; i--)
         x[0]--;
 }
-
 
 /*
  * Performs multi-precision twos complement.
@@ -115,7 +114,7 @@ void mp_add(uint16_t *x, uint16_t *y, uint16_t *w) {
     for (i = 0; i < n; i++) {
         w[i + 1] = x[i + 1] + y[i + 1] + c;
         if (!(i > 0 && (!w[i + 1]) && c))
-            c = (uint16_t)(((uint32_t)x[i + 1] + (uint32_t)y[i + 1] + c) > 0xFFFF);
+            c = (uint16_t) (((uint32_t) x[i + 1] + (uint32_t) y[i + 1] + c) > 0xFFFF);
     }
     w[0] = n;
     if (c > 0 && !x_neg) {
@@ -140,9 +139,6 @@ void mp_add_u(uint16_t *x, uint16_t *y, uint16_t *w) {
     uint16_t c = 0;
     uint16_t i = 0;
     uint16_t n = 0;
-    uint16_t x_neg;
-    uint16_t y_neg;
-    uint16_t temp[MAX_SIZE] = {0};
     uint16_t x_size = x[0];
     uint16_t y_size = y[0];
 
@@ -156,7 +152,7 @@ void mp_add_u(uint16_t *x, uint16_t *y, uint16_t *w) {
     n = x[0];
     for (i = 0; i < n; i++) {
         w[i + 1] = x[i + 1] + y[i + 1] + c;
-        c = (uint16_t)(((uint32_t)x[i + 1] + (uint32_t)y[i + 1] + c) > 0xFFFF);
+        c = (uint16_t) (((uint32_t) x[i + 1] + (uint32_t) y[i + 1] + c) > 0xFFFF);
     }
     w[0] = n;
     if (c > 0) {
@@ -222,9 +218,6 @@ void mp_sub_u(uint16_t *x, uint16_t *y, uint16_t *w) {
     uint16_t i = 0;
     uint16_t c = 0;
     uint16_t n;
-    uint16_t temp[MAX_SIZE] = {0};
-    uint16_t x_neg;
-    uint16_t y_neg;
     uint16_t x_size = x[0];
     uint16_t y_size = y[0];
 
@@ -262,11 +255,11 @@ void mp_mult(uint16_t *x, uint16_t *y, uint16_t *w) {
         for (j = 0; j < x[0]; j++) {
             uv = w[i + j + 1] + ((uint32_t) x[j + 1]) * ((uint32_t) y[i + 1]) + c;
             w[i + j + 1] = (uint16_t) uv;
-            c = (uint16_t) (uv >> 16);
+            c = (uint16_t) (uv >> 16u);
         }
-        w[i + x[0] + 1] = (uint16_t) (uv >> 16);
+        w[i + x[0] + 1] = (uint16_t) (uv >> 16u);
     }
-    if (uv >> 16) {
+    if (uv >> 16u) {
         w[0] = x[0] + y[0];
     } else {
         w[0] = x[0] + y[0] - ONE;
@@ -278,7 +271,8 @@ void mp_square(uint16_t *x, uint16_t *w) {
     uint32_t c;
     uint64_t uv = 0;
     uint64_t temp = 0;
-    uint16_t t[MAX_SIZE] = {0};
+
+    /* Treat input as positive */
     if (IS_NEGATIVE(x[x[0]])) {
         zero_pad(x, 1);
     }
@@ -288,17 +282,17 @@ void mp_square(uint16_t *x, uint16_t *w) {
     for (i = 0; i < x[0]; i++) {
         uv = (uint64_t) w[2 * i + 1] + (uint64_t) x[i + 1] * (uint64_t) x[i + 1];
         w[2 * i + 1] = (uint16_t) uv;
-        c = (uint32_t) (uv >> 16);
+        c = (uint32_t) (uv >> 16u);
         for (j = i + ONE; j < x[0]; j++) {
             uv = (uint64_t) w[i + j + 1];
             temp = (uint64_t) x[j + 1] * (uint64_t) x[i + 1];
             temp <<= 1;
             uv += (temp + c);
             w[i + j + 1] = (uint16_t) uv;
-            c = (uint32_t) (uv >> 16);
+            c = (uint32_t) (uv >> 16u);
         }
-        w[i + x[0] + 1] = (uint16_t) (uv >> 16);
-        w[i + x[0] + 2] = (uint16_t) (uv >> 32);
+        w[i + x[0] + 1] = (uint16_t) (uv >> 16u);
+        w[i + x[0] + 2] = (uint16_t) (uv >> 32u);
     }
     w[0] = (uint16_t) 2 * x[0];
     remove_leading_zeros(w);
@@ -319,7 +313,7 @@ void mp_mult_scalar(uint16_t *x, uint16_t y, uint16_t *w) {
     for (j = 0; j < x[0]; j++) {
         uv = ((uint32_t) x[j + 1]) * ((uint32_t) y) + c;
         w[j + 1] = (uint16_t) uv;
-        c = (uint16_t) (uv >> 16);
+        c = (uint16_t) (uv >> 16u);
     }
     if (c) {
         w[x[0] + 1] = c;
@@ -556,9 +550,9 @@ void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
         if (r[i + 1] == y[t + 1])
             q[i - t] = NEG_ONE;
         else
-            q[i - t] = (uint16_t) ((((uint32_t) r[i + 1] << 16) + r[i]) / y[t + 1]);
-        while (((uint64_t) q[i - t] * (((uint64_t) (y[t + 1]) << 16) + y[t])) >
-               ((uint64_t) r[i + 1] << 32) + ((uint64_t) r[i] << 16) + ((uint64_t) r[i - 1]))
+            q[i - t] = (uint16_t) ((((uint32_t) r[i + 1] << 16u) + r[i]) / y[t + 1]);
+        while (((uint64_t) q[i - t] * (((uint64_t) (y[t + 1]) << 16u) + y[t])) >
+               ((uint64_t) r[i + 1] << 32u) + ((uint64_t) r[i] << 16u) + ((uint64_t) r[i - 1]))
             q[i - t] -= 1;
         lsh_radix(y, i - t - ONE, temp2);
         mp_mult_scalar(temp2, q[i - t], temp);
@@ -638,18 +632,18 @@ void mp_mult_l(uint16_t *x, uint16_t *y, uint16_t *w, uint16_t words) {
             if (i + j + 1 > words)
                 break;
             uv = w[i + j + 1] + ((uint32_t) x[j + 1]) * ((uint32_t) y[i + 1]) + c;
-            w[i + j + 1] = (uint16_t) (uv&0xFFFF);
-            c = (uint16_t) ((uv >> 16)&0xFFFF);
+            w[i + j + 1] = (uint16_t) (uv & 0xFFFFu);
+            c = (uint16_t) ((uv >> 16u) & 0xFFFFu);
         }
         if (i + x[0] + 1 <= words)
-            w[i + x[0] + 1] = (uint16_t) ((uv >> 16)&0xFFFF);
+            w[i + x[0] + 1] = (uint16_t) ((uv >> 16u) & 0xFFFFu);
     }
     w[0] = words;
     remove_leading_zeros(w);
 }
 
 /*
- * DH montgomery product. R = 2^4096
+ * Montgomery product for Diffie Hellman. R = 2^4096
  * */
 void dh_mon_pro(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uint16_t *u) {
     uint16_t temp[MAX_SIZE] = {0};
@@ -671,7 +665,7 @@ void dh_mon_pro(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uint16
 }
 
 /*
- * DH montgomery exponentiation. R = 2^4096
+ * Montgomery exponentiation for Diffie Hellman. R = 2^4096
  * */
 void dh_mon_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16_t *R, uint16_t *a) {
     uint16_t x_[MAX_SIZE];
@@ -691,7 +685,7 @@ void dh_mon_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16
             dh_mon_pro(a, a, m, m_prime, temp);
             mp_copy(temp, a);
             count += 1;
-            if (e[i] & (1 << j)) {
+            if (e[i] & (1u << (uint32_t)j)) {
                 dh_mon_pro(a, x_, m, m_prime, temp);
                 mp_copy(temp, a);
             }
@@ -707,13 +701,12 @@ void dh_mon_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint16
 }
 
 /*
- * Montgomery multiplication - signed only
+ * Montgomery multiplication
  * Algorithm 14.36 - Handbook of applied cryptography
  */
 uint32_t mont_mult(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uint16_t *a) {
     uint16_t i;
     uint16_t ui;
-    uint32_t t;
     uint16_t temp[MAX_SIZE];
     uint16_t temp2[MAX_SIZE];
     uint16_t temp3[MAX_SIZE];
@@ -769,7 +762,7 @@ uint32_t mont_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint
         for (j = t - 1; j >= 0; j--) {
             mont_mult(a, a, m, m_prime, temp);
             mp_copy(temp, a);
-            if (e[i] & (1 << j)) {
+            if (e[i] & (1u << (uint32_t)j)) {
                 mont_mult(a, x_, m, m_prime, temp);
                 mp_copy(temp, a);
             }
@@ -880,4 +873,11 @@ uint32_t is_zero(uint16_t *x) {
         if (x[i] != 0)
             return FALSE;
     return TRUE;
+}
+
+uint32_t is_one(uint16_t *x) {
+    remove_leading_zeros(x);
+    if (x[0] == 1 && x[1] == 1)
+        return TRUE;
+    return FALSE;
 }
