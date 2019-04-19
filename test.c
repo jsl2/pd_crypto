@@ -724,10 +724,10 @@ void test_sts() {
 
     pkcs_sign(n_B, n_B_prime, d_B, R, two_pow_y, two_pow_x, sig_B);
     /* encrypt sig_B */
-    aes_set_encrypt_key(&key, (const uint8_t *) key_B, 128);
+    /*aes_set_encrypt_key(&key, (const uint8_t *) key_B, 128);
     for (i = 0; i < 33; i++) {
         aes_encrypt(&key, (uint8_t *) (sig_B + i * 8), cipher_text_B[i]);
-    }
+    }*/
     /* STEP c). A compute shared key. Decrypt encrypted data.
      * Verify signature. Send B encrypted signature. */
     dh_mon_exp(two_pow_y, x, p4096, p4096_prime, R, ss_A);
@@ -736,27 +736,27 @@ void test_sts() {
     SHA256_Update(&ctx, buf, 512);
     SHA256_Final(key_A, &ctx);
     RUN_TEST_STR("Diffie-Hellman key test (A)", (const char *) key_A, (const char *) key_expected);
-    aes_set_encrypt_key(&key, (const uint8_t *) key_A, 128);
+    /*aes_set_encrypt_key(&key, (const uint8_t *) key_A, 128);
     for (i = 0; i < 33; i++) {
         aes_decrypt(&key, cipher_text_B[i], (uint8_t *) (sig_B_decrypted + i * 8));
-    }
+    }*/
     /* RSA verification */
     RUN_TEST_BOOL("Signature verification test (A verify B's signature)",
-                  pkcs_verify(n_B, n_B_prime, e_B, R, two_pow_y, two_pow_x, sig_B_decrypted));
+                  pkcs_verify(n_B, n_B_prime, e_B, R, two_pow_y, two_pow_x, sig_B));
 
     pkcs_sign(n_A, n_A_prime, d_A, R, two_pow_x, two_pow_y, sig_A);
     /* encrypt sig_A */
-    aes_set_encrypt_key(&key, (const uint8_t *) key_A, 128);
+    /*aes_set_encrypt_key(&key, (const uint8_t *) key_A, 128);
     for (i = 0; i < 33; i++) {
         aes_encrypt(&key, (uint8_t *) (sig_A + i * 8), cipher_text_A[i]);
     }
     aes_set_encrypt_key(&key, (const uint8_t *) key_B, 128);
     for (i = 0; i < 33; i++) {
         aes_decrypt(&key, cipher_text_A[i], (uint8_t *) (sig_A_decrypted + i * 8));
-    }
+    }*/
     /* STEP d). B decrypt encrypted data and verify signature */
     RUN_TEST_BOOL("Signature verification test (B verify A's signature)",
-                  pkcs_verify(n_A, n_A_prime, e_A, R, two_pow_x, two_pow_y, sig_A_decrypted));
+                  pkcs_verify(n_A, n_A_prime, e_A, R, two_pow_x, two_pow_y, sig_A));
 }
 
 void test_bbs() {
