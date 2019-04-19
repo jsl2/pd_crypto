@@ -7,7 +7,6 @@
 //
 
 #include "Encryption_functions.h"
-#include "lib/aes.h"
 #include "Galois_Multiplication.h"
 
 // The following function computes all intermediate cipher-texts that will be sent to decryption, as well as T, argument used for next iteration and final tag computation (cfr annotated document).

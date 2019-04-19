@@ -1008,6 +1008,7 @@ void test_circular_buffer(uint8_t buffer_len) {
 #endif
 
     recovered_count = 0;
+
     for (i = 0; i < buffer_len; i++) {
         if (circular_buffer_append_15(&data_buffer[8 * i], circular_buffer_send, &in_ptr_send, &out_ptr_send,
                                       out_buffer)) {
@@ -1024,6 +1025,7 @@ void test_circular_buffer(uint8_t buffer_len) {
                 recovered_count++;
         }
     }
+
     if (circular_buffer_is_residual(circular_buffer_send, in_ptr_send)) {
         circular_buffer_get_residual(circular_buffer_send, in_ptr_send, out_ptr_send, out_buffer);
 #ifdef DEBUG_PRINT
@@ -1054,11 +1056,6 @@ void test_circular_buffer(uint8_t buffer_len) {
 void test_gcm() {
     aes_key key;
 
-    uint16_t p2 = 0x0000;
-    uint16_t p1 = 0x0000;
-    uint16_t p2_out = 0x0000;
-    uint16_t p1_out = 0x0000;
-    uint8_t exception = 0x00;
     uint16_t i;
     uint8_t a;
     uint16_t h;
@@ -1067,16 +1064,27 @@ void test_gcm() {
     uint16_t buffer_len = 80;
     uint8_t data_in_c[15];
     uint16_t data_in_s[8];
-    uint8_t buffer_circ[128];
+
     uint8_t buffer_circ_d[128] = {0x0000};
     uint8_t data_out_t[16];
     uint8_t data_out_d[16];
     uint16_t data_to_speech[8];
-    uint16_t buff_in[8 * buffer_len]; // 20 * 120 bits (20 * 40 = 800 samples)
-    uint8_t data_ready = 0x00;
-    uint8_t data_ready_out = 0x00;
 
-    uint8_t IV[12];
+    uint8_t circular_buffer_send[240]; /* Circular buffer for data from encoding -> encryption */
+    uint8_t *in_ptr_send = circular_buffer_send;  /* pointers for circular buffer */
+    uint8_t *out_ptr_send = circular_buffer_send;
+    uint8_t send_data[16]; /* buffer for data -> encryption */
+    uint8_t circular_buffer_rcv[240];  /* Circular buffer for data from decryption -> decoding */
+    uint8_t *in_ptr_rcv = circular_buffer_rcv;  /* pointers for circular buffer */
+    uint8_t *out_ptr_rcv = circular_buffer_rcv;
+
+    uint16_t data_buffer[16 * 128]; /* 128 * 120 bits (128 * 40 samples) */
+    uint16_t recovered_data_buffer[16 * 128];
+    uint8_t data_ready;
+    uint8_t duplicate_data;
+    uint16_t recovered_count = 0;
+
+    uint8_t iv[12];
     uint8_t Y[16] = {0x00};
     uint16_t H[8];
     uint16_t T0[8];
@@ -1085,7 +1093,7 @@ void test_gcm() {
     uint8_t packet_1[17];
     uint8_t packet_int[21];
     uint8_t packet_last[21];
-    uint8_t recovered_plaintexts[16];
+    uint8_t recovered_plaintext[16];
     uint8_t lenC[16] = {0x00};
 
     long seed = time(NULL);
@@ -1093,98 +1101,100 @@ void test_gcm() {
 
     for (i = 0; i < buffer_len; i++) {
         for (j = 0; j < 8; j++) {
-            if (j < 7) {
-                buff_in[i * 8 + j] = (uint16_t) rand();
-                printf("%04x ", buff_in[i * 8 + j]);
-            }
-            else {
-                buff_in[i * 8 + j] = (uint16_t) (rand() & 0xFFu);
-                printf("xx%02x ", buff_in[i * 8 + j]);
-            }
+            if (j == 7)
+                data_buffer[i * 8 + j] = (uint16_t) (rand() & 0xFFu);
+            else
+                data_buffer[i * 8 + j] = (uint16_t) rand();
+        }
+    }
+
+#ifdef DEBUG_PRINT
+    printf("\n");
+    for (i = 0; i < buffer_len; i++) {
+        for (j = 0; j < 8; j++) {
+            printf("%04x ", data_buffer[i*8 + j]);
         }
         printf("\n");
     }
-    printf("\n");
+#endif
 
     aes_set_encrypt_key(&key, (const uint8_t *) "\xfe\xf9\xe9\x92\x86\x65\x73\x1c\x7d\x6a\x8f\x94\x67\x30\x83\x08",
                         128);
 
     // INITIALIZATION
     for (i = 0; i < 12; i++) {
-        IV[i] = (uint8_t)rand();
+        iv[i] = (uint8_t) rand();
     }
-    initialization(Y, IV, &key, H, T0, T);
+    initialization(Y, iv, &key, H, T0, T);
     data_1(Y, packet_1);
-    decryption(packet_1, &key, recovered_plaintexts);
+    decryption(packet_1, &key, recovered_plaintext);
 
     // ENCRYPTION AND DECRYPTION CHAIN OF PLAINTEXTS
-
+#ifdef DEBUG_PRINT
     printf("Recovered Plain text : \n");
+#endif
 
     for (i = 0; i < buffer_len; i++) {
-        for (h = 0; h < 8; h++) {
-            data_in_s[h] = buff_in[h + 8 * i];
-        }
-        shortToChar((uint8_t *) data_in_s, data_in_c);
-        circularBuffer(data_in_c, buffer_circ, data_out_t, &p1, &p2, &data_ready, &exception);
-
+        data_ready = circular_buffer_append_15(&data_buffer[8 * i], circular_buffer_send, &in_ptr_send, &out_ptr_send,
+                                               (uint16_t *) send_data);
         if (data_ready) {
-            ghash_e(H, data_out_t, Ci, Y, &key, T);
+            ghash_e(H, send_data, Ci, Y, &key, T);
             data_int(Y, Ci, packet_int);
             incr_lenC((uint16_t *) lenC);
-            decryption(packet_int, &key, recovered_plaintexts);
-            circularBuffer_out(recovered_plaintexts, buffer_circ_d, data_out_d, &p1_out, &p2_out, &data_ready_out);
-        }
-        if (data_ready_out) {
-            charToShort(data_out_d, (uint8_t *) data_to_speech);
-            print_short(data_to_speech);
-            // Send data_out_d
+            decryption(packet_int, &key, recovered_plaintext);
+
+            duplicate_data = circular_buffer_append_16((uint16_t *) recovered_plaintext, circular_buffer_rcv,
+                                                       &in_ptr_rcv,
+                                                       &out_ptr_rcv, &recovered_data_buffer[8 * recovered_count]);
+            recovered_count++;
+            if (duplicate_data)
+                recovered_count++;
         }
     }
 
-    // The following if concerns the case where the last packet of data from speech part + some extra leftovers from previously are less than 128 bits, it will be replaced by a condition on the value added on last packet from speech part.
+    if (circular_buffer_is_residual(circular_buffer_send, in_ptr_send)) {
+        circular_buffer_get_residual(circular_buffer_send, in_ptr_send, out_ptr_send, (uint16_t *) send_data);
+#ifdef DEBUG_PRINT
+        for (j = 0; j < 8; j++) {
+            printf("%04x ", out_buffer[j]);
+        }
+        printf("\n");
+#endif
+        ghash_e(H, send_data, Ci, Y, &key, T);
+        data_int(Y, Ci, packet_int);
+        incr_lenC((uint16_t *) lenC);
+        decryption(packet_int, &key, recovered_plaintext);
 
-    for (h = 0; h < 8; h++) {
-        data_in_s[h] = 0x0000;
+        duplicate_data = circular_buffer_append_16((uint16_t *) recovered_plaintext, circular_buffer_rcv, &in_ptr_rcv,
+                                                   &out_ptr_rcv, &recovered_data_buffer[8 * recovered_count]);
+        recovered_count++;
+        if (duplicate_data)
+            recovered_count++;
     }
-    exception = 0x01;
-    shortToChar((uint8_t *) data_in_s, data_in_c);
-    circularBuffer(data_in_c, buffer_circ, data_out_t, &p1, &p2, &data_ready, &exception);
-    ghash_e(H, data_out_t, Ci, Y, &key, T);
-    //       incr(Y);        // TEST 1: SEQ NUM : incrementing Y for no packet send, will flag sequence order problem.
-    //       Ci[10] = 0x00;  // TEST 2: Ci : changing cipher text after encryption and before decryption, will raise a flag concerning matching of tags (except if Ci[10] is 0x00 and then code should be re-run).
-    data_int(Y, Ci, packet_int);
-    incr_lenC((uint16_t *) lenC);
-    decryption(packet_int, &key, recovered_plaintexts);
-    circularBuffer_out(recovered_plaintexts, buffer_circ_d, data_out_d, &p1_out, &p2_out, &data_ready_out);
-    charToShort(data_out_d, (uint8_t *) data_to_speech);
-    print_short(data_to_speech);
-    printf("\n");
 
     inversion(lenC);
     tag(T, lenC, T0, H);
     data_last(Y, (uint8_t *) T, packet_last);
-    printf("Buffer ready for new data\n");
-    decryption(packet_last, &key, recovered_plaintexts);
-    printf("\n");
+    decryption(packet_last, &key, recovered_plaintext);
+    RUN_TEST_ARR("GCM test", recovered_data_buffer, data_buffer, (size_t) buffer_len * 16);
 }
 
 int main(void) {
     /* Test circular buffer */
-    test_circular_buffer(120);
-    test_circular_buffer(96); /* multiple of 16 elements */
-    //test_gcm();
+    //test_circular_buffer(120);
+    //test_circular_buffer(96); /* multiple of 16 elements */
+    test_gcm();
     /* Test of Blum-blum-shub PRNG */
-    test_bbs();
+    //test_bbs();
     /* Full test of Station to Station protocol */
-    test_sts();
+    //test_sts();
 
-    test_addition();
+    /*test_addition();
     test_subtraction();
     test_multiplication();
     test_division();
     test_gcd();
     test_square_mod_n();
-    test_montgomery();
+    test_montgomery();*/
     return 0;
 }

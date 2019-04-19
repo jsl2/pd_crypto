@@ -7,7 +7,6 @@
 //
 
 #include "array_copies.h"
-#include "lib/aes.h"
 
 // Initialisation: compute Y0 with the IV. Y will corresponds to counter in algorithm schematics
 uint16_t null[8] = {0x0000};

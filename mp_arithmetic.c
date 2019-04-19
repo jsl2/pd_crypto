@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include "mp_arithmetic.h"
 
 void print_radix(uint16_t *x) {

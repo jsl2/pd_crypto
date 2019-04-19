@@ -1,9 +1,8 @@
-import random
 import math
-from mpmath import mp
+import random
 from Crypto.Hash import SHA256
-from Crypto.Util.number import getPrime, GCD, inverse, getStrongPrime
-
+from Crypto.Util.number import getPrime, GCD, inverse
+from mpmath import mp
 
 
 def print_c_format(large_int):

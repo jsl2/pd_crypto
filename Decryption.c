@@ -7,7 +7,6 @@
 //
 
 #include "Decryption.h"
-#include "lib/aes.h"
 #include "Galois_Multiplication.h"
 #include "array_copies.h"
 #include "Decryption_functions.h"

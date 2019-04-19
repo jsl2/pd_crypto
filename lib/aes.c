@@ -49,7 +49,6 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <string.h>
 #include "aes.h"
 
 typedef uint32_t u32;
