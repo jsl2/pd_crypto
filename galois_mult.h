@@ -9,11 +9,12 @@
 #ifndef Galois_Multiplication_h
 #define Galois_Multiplication_h
 
-void increment(unsigned char *Y);
+void increment(uint8_t *Y);
 
-void increment_lenC(unsigned char *lenC);
+void increment_lenC(uint8_t *lenC);
 void right_shift(uint8_t *V);
-void xor(unsigned char *a, unsigned char *b);
+
+void xor(uint8_t *a, uint8_t *b);
 void gmult(uint16_t *X, uint16_t *W, uint16_t*Z);
 
 #endif /* Galois_Multiplication_h */

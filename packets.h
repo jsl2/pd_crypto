@@ -1,18 +1,18 @@
 #ifndef CRYPTO_PACKETS_H
 #define CRYPTO_PACKETS_H
 
-void handle_packet(unsigned char *data, aes_key *key, unsigned char *buffer_out);
+void handle_packet(uint8_t *data, aes_key *key, uint8_t *buffer_out);
 
-void pack_data_first(unsigned char *Y, unsigned char *packet_1);
+void pack_data_first(uint8_t *Y, uint8_t *packet_1);
 
-void pack_data_int(unsigned char *Y, unsigned char *Ci, unsigned char *packet_int);
+void pack_data_int(uint8_t *Y, uint8_t *Ci, uint8_t *packet_int);
 
-void pack_data_last(unsigned char *Y, unsigned char *Te, unsigned char *packet_last);
+void pack_data_last(uint8_t *Y, uint8_t *Te, uint8_t *packet_last);
 
-void unpack_data_first(unsigned char *packet_1, unsigned char *IV);
+void unpack_data_first(uint8_t *packet_1, uint8_t *IV);
 
-void unpack_data_int(unsigned char *packet_int, unsigned char *Ci);
+void unpack_data_int(uint8_t *packet_int, uint8_t *Ci);
 
-void unpack_data_last(unsigned char *packet_last, unsigned char *Te);
+void unpack_data_last(uint8_t *packet_last, uint8_t *Te);
 
 #endif

@@ -11,7 +11,7 @@
 #include "galois_mult.h"
 
 /* Method 1 corresponding to Algorithm 1 from paper, where W corresponds to Y in algorithm */
-unsigned char R[16] = {0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t R[16] = {0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* Increment function for Y */
 void increment(uint8_t *Y) {
@@ -61,7 +61,7 @@ void right_shift(uint8_t *V){
 }
 
 /* The following function is doing an XOR between a and b and store its result in a */
-void xor(unsigned char *a, unsigned char *b){
+void xor(uint8_t *a, uint8_t *b) {
     uint8_t i;
     for (i=0; i<16; i++) {
         a[i] = a[i]^b[i];
@@ -92,7 +92,7 @@ void gmult(uint16_t *X, uint16_t *Y, uint16_t*Z){
         mask_y4 = 0x0800;
         for (j=0; j<4; j++) {
             if (W[i] & mask_y1) {
-                xor((unsigned char*) Z,(unsigned char*) V);
+                xor((uint8_t *) Z, (uint8_t *) V);
                 mask_y1 >>= 1;
             }
             else{
@@ -100,7 +100,7 @@ void gmult(uint16_t *X, uint16_t *Y, uint16_t*Z){
             }
             if (V[7] & mask_v) {
                 right_shift((uint8_t*)V);
-                xor((unsigned char*) V, R);
+                xor((uint8_t *) V, R);
             }
             else{
                 right_shift((uint8_t*)V);
@@ -108,7 +108,7 @@ void gmult(uint16_t *X, uint16_t *Y, uint16_t*Z){
         }
         for (j=0; j<4; j++) {
             if (W[i] & mask_y2) {
-                xor((unsigned char*) Z,(unsigned char*) V);
+                xor((uint8_t *) Z, (uint8_t *) V);
                 mask_y2 >>= 1;
             }
             else{
@@ -116,7 +116,7 @@ void gmult(uint16_t *X, uint16_t *Y, uint16_t*Z){
             }
             if (V[7] & mask_v) {
                 right_shift((uint8_t*)V);
-                xor((unsigned char*) V, R);
+                xor((uint8_t *) V, R);
             }
             else{
                 right_shift((uint8_t*)V);
@@ -124,7 +124,7 @@ void gmult(uint16_t *X, uint16_t *Y, uint16_t*Z){
         }
         for (j=0; j<4; j++) {
             if (W[i] & mask_y3) {
-                xor((unsigned char*) Z,(unsigned char*) V);
+                xor((uint8_t *) Z, (uint8_t *) V);
                 mask_y3 >>= 1;
             }
             else{
@@ -132,7 +132,7 @@ void gmult(uint16_t *X, uint16_t *Y, uint16_t*Z){
             }
             if (V[7] & mask_v) {
                 right_shift((uint8_t*)V);
-                xor((unsigned char*) V, R);
+                xor((uint8_t *) V, R);
             }
             else{
                 right_shift((uint8_t*)V);
@@ -140,7 +140,7 @@ void gmult(uint16_t *X, uint16_t *Y, uint16_t*Z){
         }
         for (j=0; j<4; j++) {
             if (W[i] & mask_y4) {
-                xor((unsigned char*) Z,(unsigned char*) V);
+                xor((uint8_t *) Z, (uint8_t *) V);
                 mask_y4 >>= 1;
             }
             else{
@@ -148,7 +148,7 @@ void gmult(uint16_t *X, uint16_t *Y, uint16_t*Z){
             }
             if (V[7] & mask_v) {
                 right_shift((uint8_t*)V);
-                xor((unsigned char*) V, R);
+                xor((uint8_t *) V, R);
             }
             else{
                 right_shift((uint8_t*)V);

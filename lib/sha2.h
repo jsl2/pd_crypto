@@ -72,7 +72,7 @@ extern "C" {
  * for your system:
  */
 #if 0
-typedef unsigned char u_int8_t;		/* 1-byte  (8-bits)  */
+typedef uint8_t u_int8_t;		/* 1-byte  (8-bits)  */
 typedef unsigned int u_int32_t;		/* 4-bytes (32-bits) */
 typedef unsigned long long u_int64_t;	/* 8-bytes (64-bits) */
 #endif
@@ -130,7 +130,7 @@ typedef SHA512_CTX SHA384_CTX;
 void SHA256_Init(SHA256_CTX *);
 void SHA256_Update(SHA256_CTX*, const uint8_t*, size_t);
 void SHA256_Final(uint8_t[SHA256_DIGEST_LENGTH], SHA256_CTX*);
-char* SHA256_End(SHA256_CTX*,unsigned char[SHA256_DIGEST_STRING_LENGTH]);
+char* SHA256_End(SHA256_CTX*,uint8_t[SHA256_DIGEST_STRING_LENGTH]);
 char* SHA256_Data(const uint8_t*, size_t, char[SHA256_DIGEST_STRING_LENGTH]);
 
 void SHA384_Init(SHA384_CTX*);
@@ -150,8 +150,10 @@ char* SHA512_Data(const uint8_t*, size_t, char[SHA512_DIGEST_STRING_LENGTH]);
 void SHA256_Init(SHA256_CTX *);
 void SHA256_Update(SHA256_CTX*, const u_int8_t*, size_t);
 void SHA256_Final(u_int8_t[SHA256_DIGEST_LENGTH], SHA256_CTX*);
-unsigned char* SHA256_End(SHA256_CTX*,unsigned char[SHA256_DIGEST_STRING_LENGTH]);
-unsigned char* SHA256_Data(const u_int8_t*, size_t,unsigned char[SHA256_DIGEST_STRING_LENGTH]);
+
+uint8_t *SHA256_End(SHA256_CTX *, uint8_t[SHA256_DIGEST_STRING_LENGTH]);
+
+uint8_t *SHA256_Data(const u_int8_t *, size_t, uint8_t[SHA256_DIGEST_STRING_LENGTH]);
 
 void SHA384_Init(SHA384_CTX*);
 void SHA384_Update(SHA384_CTX*, const u_int8_t*, size_t);

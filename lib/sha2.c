@@ -36,6 +36,7 @@
 
 #include <string.h>	/* memcpy()/memset() or bcopy()/bzero() */
 #include <assert.h>	/* assert() */
+#include <stdint.h>
 #include "sha2.h"
 
 /*
@@ -634,19 +635,19 @@ void SHA256_Final(sha2_byte digest[], SHA256_CTX* context) {
 	usedspace = 0;
 }
 
-unsigned char *SHA256_End(SHA256_CTX* context, unsigned char buffer[]) {
+uint8_t *SHA256_End(SHA256_CTX *context, uint8_t buffer[]) {
 	sha2_byte	digest[SHA256_DIGEST_LENGTH], *d = digest;
 	int		i;
 
 	/* Sanity check: */
 	assert(context != (SHA256_CTX*)0);
 
-	if (buffer != (unsigned char*)0) {
+	if (buffer != (uint8_t *) 0) {
 		SHA256_Final(digest, context);
 
 		for (i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-			*buffer++ = (unsigned char)sha2_hex_digits[(*d & 0xf0) >> 4];
-			*buffer++ = (unsigned char)sha2_hex_digits[*d & 0x0f];
+			*buffer++ = (uint8_t) sha2_hex_digits[(*d & 0xf0) >> 4];
+			*buffer++ = (uint8_t) sha2_hex_digits[*d & 0x0f];
 			d++;
 		}
 		*buffer = (char)0;
@@ -657,7 +658,7 @@ unsigned char *SHA256_End(SHA256_CTX* context, unsigned char buffer[]) {
 	return buffer;
 }
 
-unsigned char* SHA256_Data(const sha2_byte* data, size_t len, unsigned char digest[SHA256_DIGEST_STRING_LENGTH]) {
+uint8_t *SHA256_Data(const sha2_byte *data, size_t len, uint8_t digest[SHA256_DIGEST_STRING_LENGTH]) {
 	SHA256_CTX	context;
 
 	SHA256_Init(&context);
