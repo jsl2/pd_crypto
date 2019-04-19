@@ -6,7 +6,7 @@
 //  Copyright © 2019 Augustin MOUTARLIER. All rights reserved.
 //
 
-#include "Galois_Multiplication.h"
+#include "galois_mult.h"
 
 // Method 1 corresponding to Algorithm 1 from paper, where W corresponds to Y in algorithm
 
@@ -17,61 +17,28 @@ unsigned char R[16] = "\xe1\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
 uint32_t cst = 0xffffffff;
 
 // Increment function for Y
-void incr(unsigned char *Y){
-    if (Y[12] == 0xff) {
+void incr(uint8_t *Y) {
+    uint8_t i;
+    if (Y[12] == 0xFF && Y[13] == 0xFF && Y[14] == 0xFF && Y[15] == 0xFF) {
         printf("New Pair of Key / IV is required");
     }
-    else if ((Y[15] == 0xff) & (Y[14] != 0xff)) {
-        Y[14] = Y[14] + 1;
-        if (Y[14]) {
-            Y[15] = 0x00;
-        }
-    }
-    else if ((Y[14] == 0xff) & (Y[15] == 0xff) & (Y[13] != 0xff)){
-        Y[13] = Y[13] + 1;
-        if (Y[13]) {
-            Y[14] = 0x00;
-            Y[15] = 0x00;
-        }
-    }
-    else if ((Y[13] == 0xff) & (Y[14] == 0xff) & (Y[15] == 0xff) & (Y[12] != 0xff)){
-        Y[12] = Y[12] + 1;
-        if (Y[12]) {
-            Y[13] = 0x00;
-            Y[14] = 0x00;
-            Y[15] = 0x00;
-        }
-    }
-    else{
-        Y[15] = Y[15] + 1;
+    Y[15] += 1;
+    for (i = 0; i < 3; i++) {
+        if (Y[15 - i] == 0)
+            Y[14 - i] += 1;
+        else
+            break;
     }
 }
 
-void incr_lenC(unsigned short *lenC){
-    
-    if ((lenC[7] == 0xff80) & (lenC[6] != 0xffff)) {
-        lenC[6] = lenC[6] + 1;
-        if (lenC[6]) {
-            lenC[7] = 0x0000;
-        }
-    }
-    else if ((lenC[6] == 0xffff) & (lenC[7] == 0xff80) & (lenC[5] != 0xffff)){
-        lenC[5] = lenC[5] + 1;
-        if (lenC[5]) {
-            lenC[6] = 0x0000;
-            lenC[7] = 0x0000;
-        }
-    }
-    else if ((lenC[5] == 0xffff) & (lenC[6] == 0xffff) & (lenC[7] == 0xff80) & (lenC[4] != 0xffff)){
-        lenC[4] = lenC[4] + 1;
-        if (lenC[4]) {
-            lenC[5] = 0x0000;
-            lenC[6] = 0x0000;
-            lenC[7] = 0x0000;
-        }
-    }
-    else{
-        lenC[7] = lenC[7] + 128;
+void incr_lenC(uint8_t *lenC) {
+    uint8_t i;
+    lenC[15] = lenC[15] + (uint8_t) 128;
+    for (i = 0; i < 7; i++) {
+        if (lenC[15 - i] == 0)
+            lenC[14 - i] += 1;
+        else
+            break;
     }
 }
 

@@ -10,10 +10,10 @@
 #include "circular_buffer.h"
 #include "mp_arithmetic.h"
 #include "bbs.h"
-#include "Encryption_functions.h"
+#include "encryption_functions.h"
 #include "array_copies.h"
-#include "Decryption.h"
-#include "Galois_Multiplication.h"
+#include "decryption.h"
+#include "galois_mult.h"
 
 #define RUN_TEST(test, x, y) {if (is_equal(x,y) == TRUE) { printf(test); printf(" passed!\n"); } else { \
         printf(test); printf(" failed!\n"); printf("Expected: "); print_radix(y); printf("Got: "); print_radix(x);} }
@@ -1056,20 +1056,9 @@ void test_circular_buffer(uint8_t buffer_len) {
 void test_gcm() {
     aes_key key;
 
-    uint16_t i;
-    uint8_t a;
-    uint16_t h;
+    uint16_t i, j;
 
-    int j;
     uint16_t buffer_len = 80;
-    uint8_t data_in_c[15];
-    uint16_t data_in_s[8];
-
-    uint8_t buffer_circ_d[128] = {0x0000};
-    uint8_t data_out_t[16];
-    uint8_t data_out_d[16];
-    uint16_t data_to_speech[8];
-
     uint8_t circular_buffer_send[240]; /* Circular buffer for data from encoding -> encryption */
     uint8_t *in_ptr_send = circular_buffer_send;  /* pointers for circular buffer */
     uint8_t *out_ptr_send = circular_buffer_send;
@@ -1140,7 +1129,7 @@ void test_gcm() {
         if (data_ready) {
             ghash_e(H, send_data, Ci, Y, &key, T);
             data_int(Y, Ci, packet_int);
-            incr_lenC((uint16_t *) lenC);
+            incr_lenC(lenC);
             decryption(packet_int, &key, recovered_plaintext);
 
             duplicate_data = circular_buffer_append_16((uint16_t *) recovered_plaintext, circular_buffer_rcv,
@@ -1162,7 +1151,7 @@ void test_gcm() {
 #endif
         ghash_e(H, send_data, Ci, Y, &key, T);
         data_int(Y, Ci, packet_int);
-        incr_lenC((uint16_t *) lenC);
+        incr_lenC(lenC);
         decryption(packet_int, &key, recovered_plaintext);
 
         duplicate_data = circular_buffer_append_16((uint16_t *) recovered_plaintext, circular_buffer_rcv, &in_ptr_rcv,
@@ -1172,10 +1161,10 @@ void test_gcm() {
             recovered_count++;
     }
 
-    inversion(lenC);
     tag(T, lenC, T0, H);
     data_last(Y, (uint8_t *) T, packet_last);
     decryption(packet_last, &key, recovered_plaintext);
+
     RUN_TEST_ARR("GCM test", recovered_data_buffer, data_buffer, (size_t) buffer_len * 16);
 }
 

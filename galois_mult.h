@@ -13,7 +13,8 @@
 #include "lib/aes.h"
 
 void incr(unsigned char *Y);
-void incr_lenC(unsigned short *lenC);
+
+void incr_lenC(unsigned char *lenC);
 void right_shift(uint8_t *V);
 void xor(unsigned char *a, unsigned char *b);
 void gmult(uint16_t *X, uint16_t *W, uint16_t*Z);

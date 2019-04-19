@@ -6,8 +6,8 @@
 //  Copyright © 2019 Augustin MOUTARLIER. All rights reserved.
 //
 
-#include "Encryption_functions.h"
-#include "Galois_Multiplication.h"
+#include "encryption_functions.h"
+#include "galois_mult.h"
 
 // The following function computes all intermediate cipher-texts that will be sent to decryption, as well as T, argument used for next iteration and final tag computation (cfr annotated document).
 void ghash_e(uint16_t *H, unsigned char *Pi, unsigned char *Ci, unsigned char *Y, aes_key *key, uint16_t *T){

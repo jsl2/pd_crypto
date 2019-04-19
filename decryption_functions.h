@@ -12,9 +12,7 @@
 #include <stdio.h>
 #include "lib/aes.h"
 
-void seqNumCheck(unsigned char *seqNum, unsigned char *Y);
-void incr_d(unsigned char *Y);
+void seq_num_check(unsigned char *Y, unsigned char *packet);
 void ghash_d(uint16_t *H, unsigned char *Pi, unsigned char *Ci, unsigned char *Y, aes_key *key, uint16_t *T);
-void tag_d(uint16_t *T, unsigned char *lenC, uint16_t *T0, uint16_t *H);
 
 #endif /* Decryption_functions_h */

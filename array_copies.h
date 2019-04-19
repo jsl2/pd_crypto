@@ -28,7 +28,8 @@ void packet_last_d(unsigned char *packet_last, unsigned char *Te);
 
 //void lenc(unsigned char *Y, unsigned short *lenC);
 void inversion(unsigned char *lenC);
-void tagCheck(unsigned char *T, unsigned char *Te);
+
+void tag_check(unsigned char *T, unsigned char *Te);
 void shortToChar(unsigned char *buff_in, unsigned char *buffer_in);
 void charToShort(unsigned char *buffer_out, unsigned char *buff_out);
 void print_short(unsigned short *buff_out);
