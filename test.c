@@ -692,15 +692,19 @@ void test_sts() {
     uint16_t ss_B[MAX_SIZE] = {0};
     uint16_t sig_A[MAX_SIZE] = {0};
     uint16_t sig_B[MAX_SIZE] = {0};
+    uint16_t sig_A_decrypted[MAX_SIZE] = {0};
+    uint16_t sig_B_decrypted[MAX_SIZE] = {0};
     uint8_t key_A[SHA256_DIGEST_LENGTH + 1] = {0};
     uint8_t key_B[SHA256_DIGEST_LENGTH + 1] = {0};
+    uint8_t cipher_text_A[33][16] = {{0}};
+    uint8_t cipher_text_B[33][16] = {{0}};
 
     /* Encryption */
     aes_key key;
 
-
     SHA256_CTX ctx;
     uint8_t *buf;
+    uint16_t i;
 
     /* STEP a). A send B message 1 (a^x mod p) */
     dh_mon_exp(p4096_g, x, p4096, p4096_prime, R, two_pow_x);
@@ -718,10 +722,12 @@ void test_sts() {
     SHA256_Final(key_B, &ctx);
     RUN_TEST_STR("Diffie-Hellman key test (B)", (const char *) key_B, (const char *) key_expected);
 
-    aes_set_encrypt_key(&key, (const uint8_t *) key_expected, 128);
     pkcs_sign(n_B, n_B_prime, d_B, R, two_pow_y, two_pow_x, sig_B);
     /* encrypt sig_B */
-
+    aes_set_encrypt_key(&key, (const uint8_t *) key_B, 128);
+    for (i = 0; i < 33; i++) {
+        aes_encrypt(&key, (uint8_t *) (sig_B + i * 8), cipher_text_B[i]);
+    }
     /* STEP c). A compute shared key. Decrypt encrypted data.
      * Verify signature. Send B encrypted signature. */
     dh_mon_exp(two_pow_y, x, p4096, p4096_prime, R, ss_A);
@@ -730,15 +736,27 @@ void test_sts() {
     SHA256_Update(&ctx, buf, 512);
     SHA256_Final(key_A, &ctx);
     RUN_TEST_STR("Diffie-Hellman key test (A)", (const char *) key_A, (const char *) key_expected);
-
+    aes_set_encrypt_key(&key, (const uint8_t *) key_A, 128);
+    for (i = 0; i < 33; i++) {
+        aes_decrypt(&key, cipher_text_B[i], (uint8_t *) (sig_B_decrypted + i * 8));
+    }
     /* RSA verification */
     RUN_TEST_BOOL("Signature verification test (A verify B's signature)",
-                  pkcs_verify(n_B, n_B_prime, e_B, R, two_pow_y, two_pow_x, sig_B));
+                  pkcs_verify(n_B, n_B_prime, e_B, R, two_pow_y, two_pow_x, sig_B_decrypted));
 
     pkcs_sign(n_A, n_A_prime, d_A, R, two_pow_x, two_pow_y, sig_A);
+    /* encrypt sig_A */
+    aes_set_encrypt_key(&key, (const uint8_t *) key_A, 128);
+    for (i = 0; i < 33; i++) {
+        aes_encrypt(&key, (uint8_t *) (sig_A + i * 8), cipher_text_A[i]);
+    }
+    aes_set_encrypt_key(&key, (const uint8_t *) key_B, 128);
+    for (i = 0; i < 33; i++) {
+        aes_decrypt(&key, cipher_text_A[i], (uint8_t *) (sig_A_decrypted + i * 8));
+    }
     /* STEP d). B decrypt encrypted data and verify signature */
     RUN_TEST_BOOL("Signature verification test (B verify A's signature)",
-                  pkcs_verify(n_A, n_A_prime, e_A, R, two_pow_x, two_pow_y, sig_A));
+                  pkcs_verify(n_A, n_A_prime, e_A, R, two_pow_x, two_pow_y, sig_A_decrypted));
 }
 
 void test_bbs() {
@@ -1063,7 +1081,7 @@ void test_gcm() {
     }
     initialization(Y, iv, &key, H, T0, T);
     pack_data_first(Y, packet_1);
-    handle_packet(packet_1, &key, recovered_plaintext);
+    handle_packet(packet_1, &key, NULL);
 
     /* ENCRYPTION AND DECRYPTION CHAIN OF PLAINTEXTS */
 #ifdef DEBUG_PRINT
@@ -1110,7 +1128,7 @@ void test_gcm() {
 
     tag(T, lenC, T0, H);
     pack_data_last(Y, (uint8_t *) T, packet_last);
-    handle_packet(packet_last, &key, recovered_plaintext);
+    handle_packet(packet_last, &key, NULL);
 
     RUN_TEST_ARR("GCM test", recovered_data_buffer, data_buffer, (size_t) buffer_len * 16);
 }
