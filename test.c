@@ -2,13 +2,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+#include "lib/sha2.h"
+#include "lib/aes.h"
+
+#include "circular_buffer.h"
 #include "mp_arithmetic.h"
 #include "bbs.h"
-#include "lib/sha2.h"
-#include <time.h>
-#include "lib/aes.h"
 #include "Encryption_functions.h"
-#include "Decryption_functions.h"
 #include "array_copies.h"
 #include "Decryption.h"
 #include "Galois_Multiplication.h"
@@ -17,6 +19,11 @@
         printf(test); printf(" failed!\n"); printf("Expected: "); print_radix(y); printf("Got: "); print_radix(x);} }
 #define RUN_TEST_STR(test, x, y) {if (strcmp(x,y) == 0) { printf(test); printf(" passed!\n"); } else { \
         printf(test); printf(" failed!\n"); printf("Expected: "); printf("%s\n", y); printf("Got: "); printf("%s\n", x);} }
+#define RUN_TEST_ARR(test, x, y, bytes) {if (memcmp(x,y,bytes) == 0) { printf(test); printf(" passed!\n"); } else { \
+        printf(test); printf(" failed!\n");} }
+
+
+/*#define DEBUG_PRINT*/
 
 uint16_t neg_one[MAX_SIZE] = {0x8, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF};
 uint16_t neg_two[MAX_SIZE] = {0x8, 0xFFFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF};
@@ -966,6 +973,84 @@ void test_barret_reduction() {
     RUN_TEST("p mod q (barret reduction)", test_array, p_mod_q);
 }
 
+/* Test circular buffer for buffer_len * 120 bits (MAX 128!)*/
+void test_circular_buffer(uint8_t buffer_len) {
+    uint16_t data_buffer[8 * 128];
+    uint8_t circular_buffer_send[240];
+    uint8_t *in_ptr_send = circular_buffer_send;
+    uint8_t *out_ptr_send = circular_buffer_send;
+    uint8_t circular_buffer_rcv[240];
+    uint8_t *in_ptr_rcv = circular_buffer_rcv;
+    uint8_t *out_ptr_rcv = circular_buffer_rcv;
+    uint16_t out_buffer[8];
+    uint16_t i, j, recovered_count;
+    uint8_t duplicate_data;
+
+    uint16_t recovered_data_buffer[8 * 128];
+
+    for (i = 0; i < buffer_len; i++) {
+        for (j = 0; j < 8; j++) {
+            if (j == 7)
+                data_buffer[i * 8 + j] = (uint16_t) (rand() & 0xFFu);
+            else
+                data_buffer[i * 8 + j] = (uint16_t) rand();
+        }
+    }
+
+#ifdef DEBUG_PRINT
+    printf("\n");
+    for (i = 0; i < buffer_len; i++) {
+        for (j = 0; j < 8; j++) {
+            printf("%04x ", data_buffer[i*8 + j]);
+        }
+        printf("\n");
+    }
+#endif
+
+    recovered_count = 0;
+    for (i = 0; i < buffer_len; i++) {
+        if (circular_buffer_append_15(&data_buffer[8 * i], circular_buffer_send, &in_ptr_send, &out_ptr_send,
+                                      out_buffer)) {
+#ifdef DEBUG_PRINT
+            for (j = 0; j < 8; j++) {
+                printf("%04x ", out_buffer[j]);
+            }
+            printf("\n");
+#endif
+            duplicate_data = circular_buffer_append_16(out_buffer, circular_buffer_rcv, &in_ptr_rcv, &out_ptr_rcv,
+                                                       &recovered_data_buffer[8 * recovered_count]);
+            recovered_count++;
+            if (duplicate_data)
+                recovered_count++;
+        }
+    }
+    if (circular_buffer_is_residual(circular_buffer_send, in_ptr_send)) {
+        circular_buffer_get_residual(circular_buffer_send, in_ptr_send, out_ptr_send, out_buffer);
+#ifdef DEBUG_PRINT
+        for (j = 0; j < 8; j++) {
+            printf("%04x ", out_buffer[j]);
+        }
+        printf("\n");
+#endif
+        duplicate_data = circular_buffer_append_16(out_buffer, circular_buffer_rcv, &in_ptr_rcv, &out_ptr_rcv,
+                                                   &recovered_data_buffer[8 * recovered_count]);
+        recovered_count++;
+        if (duplicate_data)
+            recovered_count++;
+    }
+
+#ifdef DEBUG_PRINT
+        printf("\n");
+        for (i = 0; i < recovered_count; i++) {
+            for (j = 0; j < 8; j++) {
+                printf("%04x ", recovered_data_buffer[i*8 + j]);
+            }
+            printf("\n");
+        }
+#endif
+    RUN_TEST_ARR("Circular buffer test", recovered_data_buffer, data_buffer, (size_t) buffer_len * 16);
+}
+
 void test_gcm() {
     aes_key key;
 
@@ -979,7 +1064,7 @@ void test_gcm() {
     uint16_t h;
 
     int j;
-    uint16_t buffer_len = 20;
+    uint16_t buffer_len = 80;
     uint8_t data_in_c[15];
     uint16_t data_in_s[8];
     uint8_t buffer_circ[128];
@@ -1059,24 +1144,23 @@ void test_gcm() {
 
     // The following if concerns the case where the last packet of data from speech part + some extra leftovers from previously are less than 128 bits, it will be replaced by a condition on the value added on last packet from speech part.
 
-    if ((p2 > p1) | ((p1 > p2) & ((128 - p1 + p2) > 15))) {
-        for (h = 0; h < 8; h++) {
-            data_in_s[h] = 0x0000;
-        }
-        exception = 0x01;
-        shortToChar((uint8_t *) data_in_s, data_in_c);
-        circularBuffer(data_in_c, buffer_circ, data_out_t, &p1, &p2, &data_ready, &exception);
-        ghash_e(H, data_out_t, Ci, Y, &key, T);
-        //       incr(Y);        // TEST 1: SEQ NUM : incrementing Y for no packet send, will flag sequence order problem.
-        //       Ci[10] = 0x00;  // TEST 2: Ci : changing cipher text after encryption and before decryption, will raise a flag concerning matching of tags (except if Ci[10] is 0x00 and then code should be re-run).
-        data_int(Y, Ci, packet_int);
-        incr_lenC((uint16_t *) lenC);
-        decryption(packet_int, &key, recovered_plaintexts);
-        circularBuffer_out(recovered_plaintexts, buffer_circ_d, data_out_d, &p1_out, &p2_out, &data_ready_out);
-        charToShort(data_out_d, (uint8_t *) data_to_speech);
-        print_short(data_to_speech);
-        // Send data_out_d
+    for (h = 0; h < 8; h++) {
+        data_in_s[h] = 0x0000;
     }
+    exception = 0x01;
+    shortToChar((uint8_t *) data_in_s, data_in_c);
+    circularBuffer(data_in_c, buffer_circ, data_out_t, &p1, &p2, &data_ready, &exception);
+    ghash_e(H, data_out_t, Ci, Y, &key, T);
+    //       incr(Y);        // TEST 1: SEQ NUM : incrementing Y for no packet send, will flag sequence order problem.
+    //       Ci[10] = 0x00;  // TEST 2: Ci : changing cipher text after encryption and before decryption, will raise a flag concerning matching of tags (except if Ci[10] is 0x00 and then code should be re-run).
+    data_int(Y, Ci, packet_int);
+    incr_lenC((uint16_t *) lenC);
+    decryption(packet_int, &key, recovered_plaintexts);
+    circularBuffer_out(recovered_plaintexts, buffer_circ_d, data_out_d, &p1_out, &p2_out, &data_ready_out);
+    charToShort(data_out_d, (uint8_t *) data_to_speech);
+    print_short(data_to_speech);
+    printf("\n");
+
     inversion(lenC);
     tag(T, lenC, T0, H);
     data_last(Y, (uint8_t *) T, packet_last);
@@ -1086,7 +1170,10 @@ void test_gcm() {
 }
 
 int main(void) {
-    test_gcm();
+    /* Test circular buffer */
+    test_circular_buffer(120);
+    test_circular_buffer(96); /* multiple of 16 elements */
+    //test_gcm();
     /* Test of Blum-blum-shub PRNG */
     test_bbs();
     /* Full test of Station to Station protocol */
