@@ -27,6 +27,7 @@ uint16_t bbs_n[MAX_SIZE] = {0x100, 0xe375, 0x66a4, 0xfa4e, 0xd3b1, 0x6665, 0x78a
                             0xf884, 0x9090, 0x9df2, 0xbcff, 0xe01b, 0x2323, 0x8f95, 0xd7f6, 0x2ac7, 0x86de, 0xa9dd,
                             0x4055, 0x4344, 0xc84d, 0xdae9};
 
+/* Blum-blum-shub PRNG. See HAC. len specified in bits */
 void bbs(uint16_t *seed, uint16_t len, uint16_t *out) {
     uint16_t xi[MAX_SIZE] = {0};
     uint16_t square[MAX_SIZE] = {0};

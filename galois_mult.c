@@ -5,19 +5,16 @@
 //  Created by Augustin Moutarlier on 10/03/2019.
 //  Copyright © 2019 Augustin MOUTARLIER. All rights reserved.
 //
+#include <stdio.h>
+#include <stdint.h>
 
 #include "galois_mult.h"
 
 // Method 1 corresponding to Algorithm 1 from paper, where W corresponds to Y in algorithm
-
-//uint16_t X[8];
-//uint16_t W[8];
-//uint16_t Z[8];
-unsigned char R[16] = "\xe1\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-uint32_t cst = 0xffffffff;
+unsigned char R[16] = {0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // Increment function for Y
-void incr(uint8_t *Y) {
+void increment(uint8_t *Y) {
     uint8_t i;
     if (Y[12] == 0xFF && Y[13] == 0xFF && Y[14] == 0xFF && Y[15] == 0xFF) {
         printf("New Pair of Key / IV is required");
@@ -31,7 +28,7 @@ void incr(uint8_t *Y) {
     }
 }
 
-void incr_lenC(uint8_t *lenC) {
+void increment_lenC(uint8_t *lenC) {
     uint8_t i;
     lenC[15] = lenC[15] + (uint8_t) 128;
     for (i = 0; i < 7; i++) {

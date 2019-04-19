@@ -10,10 +10,10 @@
 #include "circular_buffer.h"
 #include "mp_arithmetic.h"
 #include "bbs.h"
-#include "encryption_functions.h"
-#include "array_copies.h"
-#include "decryption.h"
+#include "gcm.h"
+#include "packets.h"
 #include "galois_mult.h"
+#include "rsa_sig.h"
 
 #define RUN_TEST(test, x, y) {if (is_equal(x,y) == TRUE) { printf(test); printf(" passed!\n"); } else { \
         printf(test); printf(" failed!\n"); printf("Expected: "); print_radix(y); printf("Got: "); print_radix(x);} }
@@ -21,7 +21,8 @@
         printf(test); printf(" failed!\n"); printf("Expected: "); printf("%s\n", y); printf("Got: "); printf("%s\n", x);} }
 #define RUN_TEST_ARR(test, x, y, bytes) {if (memcmp(x,y,bytes) == 0) { printf(test); printf(" passed!\n"); } else { \
         printf(test); printf(" failed!\n");} }
-
+#define RUN_TEST_BOOL(test, x) {if (x) { printf(test); printf(" passed!\n"); } else { \
+        printf(test); printf(" failed!\n");} }
 
 /*#define DEBUG_PRINT*/
 
@@ -462,9 +463,6 @@ void test_sts() {
                             000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000,
                             000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000,
                             000000, 000000, 000000, 000000, 0x1};
-    /* Prefix for DER encoding for SHA-256 (EMSA-PKCS1-v1_5) */
-    uint8_t T_prefix[19] = {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,
-                            0x05, 0x00, 0x04, 0x20};
 
     /* Constants party A - RSA public (n,e) and private (n,d) keys */
     uint16_t n_A[MAX_SIZE] = {0x100, 0xd3a3, 0xa40c, 0x3342, 0x9b37, 0x05d3, 0x4668, 0xc0ad, 0xa6e0, 0xac23, 0x3455,
@@ -696,21 +694,12 @@ void test_sts() {
     uint16_t sig_B[MAX_SIZE] = {0};
     uint8_t key_A[SHA256_DIGEST_LENGTH + 1] = {0};
     uint8_t key_B[SHA256_DIGEST_LENGTH + 1] = {0};
-    uint8_t hash_A[SHA256_DIGEST_LENGTH] = {0};
-    uint8_t hash_B[SHA256_DIGEST_LENGTH] = {0};
-    uint8_t EM_A[128] = {0};
-    uint8_t EM_B[128] = {0};
-    uint16_t msg_A[MAX_SIZE] = {0};
-    uint16_t msg_B[MAX_SIZE] = {0};
-    uint16_t verif_A[MAX_SIZE] = {0};
-    uint16_t verif_B[MAX_SIZE] = {0};
 
     /* Encryption */
     aes_key key;
 
 
     SHA256_CTX ctx;
-    int i;
     uint8_t *buf;
 
     /* STEP a). A send B message 1 (a^x mod p) */
@@ -730,28 +719,7 @@ void test_sts() {
     RUN_TEST_STR("Diffie-Hellman key test (B)", (const char *) key_B, (const char *) key_expected);
 
     aes_set_encrypt_key(&key, (const uint8_t *) key_expected, 128);
-
-    SHA256_Init(&ctx);
-    SHA256_Update(&ctx, (const uint8_t *) (&two_pow_y[1]), (size_t) two_pow_y[0] * 2);
-    SHA256_Update(&ctx, (const uint8_t *) (&two_pow_x[1]), (size_t) two_pow_x[0] * 2);
-    SHA256_Final(hash_B, &ctx);
-
-    EM_B[1] = 1;
-    for (i = 0; i < 74; i++) // remove magic number
-        EM_B[2 + i] = 0xFF;
-
-    for (i = 0; i < 19; i++) // remove magicnumber (tlen)
-        EM_B[77 + i] = T_prefix[i];
-
-    for (i = 0; i < 32; i++)
-        EM_B[96 + i] = hash_B[i];
-
-    msg_B[0] = 64;
-    for (i = 0; i < 64; i++) {
-        msg_B[i + 1] = EM_B[127 - 2 * i];
-        msg_B[i + 1] |= (EM_B[126 - 2 * i] << 8u);
-    }
-    dh_mon_exp(msg_B, d_B, n_B, n_B_prime, R, sig_B);
+    pkcs_sign(n_B, n_B_prime, d_B, R, two_pow_y, two_pow_x, sig_B);
     /* encrypt sig_B */
 
     /* STEP c). A compute shared key. Decrypt encrypted data.
@@ -764,34 +732,13 @@ void test_sts() {
     RUN_TEST_STR("Diffie-Hellman key test (A)", (const char *) key_A, (const char *) key_expected);
 
     // RSA verification
-    dh_mon_exp(sig_B, e_B, n_B, n_B_prime, R, verif_A);
-    RUN_TEST("Signature verification test (A verify B's signature)", verif_A, msg_B);
+    RUN_TEST_BOOL("Signature verification test (A verify B's signature)",
+                  pkcs_verify(n_B, n_B_prime, e_B, R, two_pow_y, two_pow_x, sig_B));
 
-    SHA256_Init(&ctx);
-    SHA256_Update(&ctx, (const uint8_t *) (&two_pow_x[1]), (size_t) two_pow_x[0] * 2);
-    SHA256_Update(&ctx, (const uint8_t *) (&two_pow_y[1]), (size_t) two_pow_y[0] * 2);
-    SHA256_Final(hash_A, &ctx);
-
-    EM_A[1] = 1;
-    for (i = 0; i < 74; i++) // remove magic number
-        EM_A[2 + i] = 0xFF;
-
-    for (i = 0; i < 19; i++) // remove magicnumber (tlen)
-        EM_A[77 + i] = T_prefix[i];
-
-    for (i = 0; i < 32; i++)
-        EM_A[96 + i] = hash_A[i];
-
-    msg_A[0] = 64;
-    for (i = 0; i < 64; i++) {
-        msg_A[i + 1] = EM_A[127 - 2 * i];
-        msg_A[i + 1] |= (EM_A[126 - 2 * i] << 8u);
-    }
-    dh_mon_exp(msg_A, d_A, n_A, n_A_prime, R, sig_A);
-
+    pkcs_sign(n_A, n_A_prime, d_A, R, two_pow_x, two_pow_y, sig_A);
     /* STEP d). B decrypt encrypted data and verify signature */
-    dh_mon_exp(sig_A, e_A, n_A, n_A_prime, R, verif_B);
-    RUN_TEST("Signature verification test (B verify A's signature)", verif_B, msg_A);
+    RUN_TEST_BOOL("Signature verification test (B verify A's signature)",
+                  pkcs_verify(n_A, n_A_prime, e_A, R, two_pow_x, two_pow_y, sig_A));
 }
 
 void test_bbs() {
@@ -1063,7 +1010,7 @@ void test_gcm() {
     uint8_t *in_ptr_send = circular_buffer_send;  /* pointers for circular buffer */
     uint8_t *out_ptr_send = circular_buffer_send;
     uint8_t send_data[16]; /* buffer for data -> encryption */
-    uint8_t circular_buffer_rcv[240];  /* Circular buffer for data from decryption -> decoding */
+    uint8_t circular_buffer_rcv[240];  /* Circular buffer for data from handle_packet -> decoding */
     uint8_t *in_ptr_rcv = circular_buffer_rcv;  /* pointers for circular buffer */
     uint8_t *out_ptr_rcv = circular_buffer_rcv;
 
@@ -1115,8 +1062,8 @@ void test_gcm() {
         iv[i] = (uint8_t) rand();
     }
     initialization(Y, iv, &key, H, T0, T);
-    data_1(Y, packet_1);
-    decryption(packet_1, &key, recovered_plaintext);
+    pack_data_first(Y, packet_1);
+    handle_packet(packet_1, &key, recovered_plaintext);
 
     // ENCRYPTION AND DECRYPTION CHAIN OF PLAINTEXTS
 #ifdef DEBUG_PRINT
@@ -1127,10 +1074,10 @@ void test_gcm() {
         data_ready = circular_buffer_append_15(&data_buffer[8 * i], circular_buffer_send, &in_ptr_send, &out_ptr_send,
                                                (uint16_t *) send_data);
         if (data_ready) {
-            ghash_e(H, send_data, Ci, Y, &key, T);
-            data_int(Y, Ci, packet_int);
-            incr_lenC(lenC);
-            decryption(packet_int, &key, recovered_plaintext);
+            gcm_encrypt(H, send_data, Ci, Y, &key, T);
+            pack_data_int(Y, Ci, packet_int);
+            increment_lenC(lenC);
+            handle_packet(packet_int, &key, recovered_plaintext);
 
             duplicate_data = circular_buffer_append_16((uint16_t *) recovered_plaintext, circular_buffer_rcv,
                                                        &in_ptr_rcv,
@@ -1149,10 +1096,10 @@ void test_gcm() {
         }
         printf("\n");
 #endif
-        ghash_e(H, send_data, Ci, Y, &key, T);
-        data_int(Y, Ci, packet_int);
-        incr_lenC(lenC);
-        decryption(packet_int, &key, recovered_plaintext);
+        gcm_encrypt(H, send_data, Ci, Y, &key, T);
+        pack_data_int(Y, Ci, packet_int);
+        increment_lenC(lenC);
+        handle_packet(packet_int, &key, recovered_plaintext);
 
         duplicate_data = circular_buffer_append_16((uint16_t *) recovered_plaintext, circular_buffer_rcv, &in_ptr_rcv,
                                                    &out_ptr_rcv, &recovered_data_buffer[8 * recovered_count]);
@@ -1162,28 +1109,28 @@ void test_gcm() {
     }
 
     tag(T, lenC, T0, H);
-    data_last(Y, (uint8_t *) T, packet_last);
-    decryption(packet_last, &key, recovered_plaintext);
+    pack_data_last(Y, (uint8_t *) T, packet_last);
+    handle_packet(packet_last, &key, recovered_plaintext);
 
     RUN_TEST_ARR("GCM test", recovered_data_buffer, data_buffer, (size_t) buffer_len * 16);
 }
 
 int main(void) {
     /* Test circular buffer */
-    //test_circular_buffer(120);
-    //test_circular_buffer(96); /* multiple of 16 elements */
+    test_circular_buffer(120);
+    test_circular_buffer(96); /* multiple of 16 elements */
     test_gcm();
     /* Test of Blum-blum-shub PRNG */
-    //test_bbs();
+    test_bbs();
     /* Full test of Station to Station protocol */
-    //test_sts();
+    test_sts();
 
-    /*test_addition();
+    test_addition();
     test_subtraction();
     test_multiplication();
     test_division();
     test_gcd();
     test_square_mod_n();
-    test_montgomery();*/
+    test_montgomery();
     return 0;
 }
