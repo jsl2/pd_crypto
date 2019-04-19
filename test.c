@@ -1085,13 +1085,19 @@ void test_gcm() {
 
     /* ENCRYPTION AND DECRYPTION CHAIN OF PLAINTEXTS */
 #ifdef DEBUG_PRINT
-    printf("Recovered Plain text : \n");
+    printf("\nRecovered Plain text : \n");
 #endif
 
     for (i = 0; i < buffer_len; i++) {
         data_ready = circular_buffer_append_15(&data_buffer[8 * i], circular_buffer_send, &in_ptr_send, &out_ptr_send,
                                                (uint16_t *) send_data);
         if (data_ready) {
+#ifdef DEBUG_PRINT
+            for (j = 0; j < 8; j++) {
+                printf("%04x ", ((uint16_t *)send_data)[j]);
+            }
+            printf("\n");
+#endif
             gcm_encrypt(H, send_data, Ci, Y, &key, T);
             pack_data_int(Y, Ci, packet_int);
             increment_lenC(lenC);
@@ -1110,7 +1116,7 @@ void test_gcm() {
         circular_buffer_get_residual(circular_buffer_send, in_ptr_send, out_ptr_send, (uint16_t *) send_data);
 #ifdef DEBUG_PRINT
         for (j = 0; j < 8; j++) {
-            printf("%04x ", out_buffer[j]);
+            printf("%04x ", send_data[j]);
         }
         printf("\n");
 #endif
@@ -1125,11 +1131,21 @@ void test_gcm() {
         if (duplicate_data)
             recovered_count++;
     }
-
+#ifdef DEBUG_PRINT
+    printf("\n");
+#endif
     tag(T, lenC, T0, H);
     pack_data_last(Y, (uint8_t *) T, packet_last);
     handle_packet(packet_last, &key, NULL);
-
+#ifdef DEBUG_PRINT
+    for (i = 0; i < recovered_count; i++) {
+        for (j = 0; j < 8; j++) {
+            printf("%04x ", recovered_data_buffer[i*8 + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+#endif
     RUN_TEST_ARR("GCM test", recovered_data_buffer, data_buffer, (size_t) buffer_len * 16);
 }
 
