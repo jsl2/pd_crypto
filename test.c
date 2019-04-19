@@ -941,10 +941,10 @@ void test_barret_reduction() {
 /* Test circular buffer for buffer_len * 120 bits (MAX 128!)*/
 void test_circular_buffer(uint8_t buffer_len) {
     uint16_t data_buffer[8 * 128];
-    uint8_t circular_buffer_send[240];
+    uint8_t circular_buffer_send[CIRCULAR_BUFFER_LEN];
     uint8_t *in_ptr_send = circular_buffer_send;
     uint8_t *out_ptr_send = circular_buffer_send;
-    uint8_t circular_buffer_rcv[240];
+    uint8_t circular_buffer_rcv[CIRCULAR_BUFFER_LEN];
     uint8_t *in_ptr_rcv = circular_buffer_rcv;
     uint8_t *out_ptr_rcv = circular_buffer_rcv;
     uint16_t out_buffer[8];
@@ -1024,11 +1024,11 @@ void test_gcm() {
     uint16_t i, j;
 
     uint16_t buffer_len = 80;
-    uint8_t circular_buffer_send[240]; /* Circular buffer for data from encoding -> encryption */
+    uint8_t circular_buffer_send[CIRCULAR_BUFFER_LEN]; /* Circular buffer for data from encoding -> encryption */
     uint8_t *in_ptr_send = circular_buffer_send;  /* pointers for circular buffer */
     uint8_t *out_ptr_send = circular_buffer_send;
     uint8_t send_data[16]; /* buffer for data -> encryption */
-    uint8_t circular_buffer_rcv[240];  /* Circular buffer for data from handle_packet -> decoding */
+    uint8_t circular_buffer_rcv[CIRCULAR_BUFFER_LEN];  /* Circular buffer for data from handle_packet -> decoding */
     uint8_t *in_ptr_rcv = circular_buffer_rcv;  /* pointers for circular buffer */
     uint8_t *out_ptr_rcv = circular_buffer_rcv;
 

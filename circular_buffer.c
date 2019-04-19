@@ -20,7 +20,7 @@ uint8_t circular_buffer_append_15(uint16_t *in_data, uint8_t *circular_buffer, u
         *out_ptr += 16;
 
     data_rdy = (uint8_t) (*out_ptr > circular_buffer);
-    if (*in_ptr == (circular_buffer + 240)) {
+    if (*in_ptr == (circular_buffer + CIRCULAR_BUFFER_LEN)) {
         *in_ptr = circular_buffer;
         *out_ptr = circular_buffer;
     }
@@ -65,7 +65,7 @@ uint8_t circular_buffer_append_16(uint16_t *in_data, uint8_t *circular_buffer, u
     *in_ptr += 16;
     *out_ptr += 15;
 
-    if (*in_ptr == (circular_buffer + 240)) {
+    if (*in_ptr == (circular_buffer + CIRCULAR_BUFFER_LEN)) {
         for (i = 0; i < 15; i++)
             output_data_bytes[i + 16] = (*out_ptr)[i];
         output_data_bytes[31] = 0;
