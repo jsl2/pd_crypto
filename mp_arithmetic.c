@@ -752,8 +752,8 @@ uint32_t mont_exp(uint16_t *x, uint16_t *e, uint16_t *m, uint16_t *m_prime, uint
     mp_copy(x, a);
     t = 32 - __builtin_clz(e[e[0]]);
 
-    // Not use montgomery multiplication for this step
-    // mont_mult(a, R_square_mod_m, m, m_prime, x_);
+    /* Not use montgomery multiplication for this step
+       mont_mult(a, R_square_mod_m, m, m_prime, x_); */
     mp_mult(x, R, temp);
     mp_div(temp, m, temp2, x_);
     mp_copy(R_mod_m, a);
@@ -846,9 +846,10 @@ uint32_t is_equal(uint16_t *x, uint16_t *y) {
     uint16_t i;
     uint16_t x_size = x[0];
     uint16_t y_size = y[0];
+    uint16_t is_equal = TRUE;
+
     remove_leading_zeros(x);
     remove_leading_zeros(y);
-    uint16_t is_equal = TRUE;
     if (x[0] != y[0]) {
         is_equal = FALSE;
     } else {

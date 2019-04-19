@@ -13,4 +13,4 @@ void gcm_decrypt(uint16_t *H, unsigned char *Pi, unsigned char *Ci, unsigned cha
 
 uint8_t tag_check(unsigned char *T, unsigned char *Te);
 
-#endif //CRYPTO_GCM_H
+#endif

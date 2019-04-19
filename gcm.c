@@ -29,20 +29,12 @@ void seq_num_check(unsigned char *Y, unsigned char *packet) {
 void gcm_decrypt(uint16_t *H, unsigned char *Pi, unsigned char *Ci, unsigned char *Y, aes_key *key, uint16_t *T) {
     unsigned char Ti[16] = {0x00};
     uint16_t Z[8] = {0x0000};
-    unsigned char ZA[16] = {0x00};
     uint8_t i;
     increment(Y);
-    for (i = 0; i < 16; i++) {
-        ZA[i] = Y[i];
-    }
+
     aes_encrypt(key, Y, Ti);
-    for (i = 0; i < 16; i++) {
-        ZA[i] = Y[i];
-    }
     xor(Ti, Ci);
-    for (i = 0; i < 16; i++) {
-        ZA[i] = Ci[i];
-    }
+
     for (i = 0; i < 16; i++) {
         Pi[i] = Ti[i];
     }

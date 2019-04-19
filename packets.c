@@ -30,7 +30,7 @@ void handle_packet(unsigned char *data, aes_key *key, unsigned char *buffer_out)
     }
 }
 
-// packet_1 is an unsigned char of 17 elements
+/* packet_1 is an unsigned char of 17 elements */
 void pack_data_first(unsigned char *Y, unsigned char *packet_1) {
     uint8_t i;
     packet_1[0] = 0x04;
@@ -42,7 +42,7 @@ void pack_data_first(unsigned char *Y, unsigned char *packet_1) {
     }
 }
 
-//packet_int is an unsigned char of 21 elements
+/* packet_int is an unsigned char of 21 elements */
 void pack_data_int(unsigned char *Y, unsigned char *Ci, unsigned char *packet_int) {
     uint8_t i;
     packet_int[0] = 0x05;
@@ -54,7 +54,7 @@ void pack_data_int(unsigned char *Y, unsigned char *Ci, unsigned char *packet_in
     }
 }
 
-//packet_last is an unsigned char of 26 elements
+/* packet_last is an unsigned char of 26 elements */
 void pack_data_last(unsigned char *Y, unsigned char *T, unsigned char *packet_last) {
     uint8_t i;
     packet_last[0] = 0x06;
@@ -66,7 +66,7 @@ void pack_data_last(unsigned char *Y, unsigned char *T, unsigned char *packet_la
     }
 }
 
-// Packet decoding to form the cipher texts
+/* Packet decoding to form the cipher texts */
 void unpack_data_first(unsigned char *packet_1, unsigned char *IV) {
     uint8_t i;
     for (i = 0; i < 12; i++) {

@@ -15,4 +15,4 @@ void unpack_data_int(unsigned char *packet_int, unsigned char *Ci);
 
 void unpack_data_last(unsigned char *packet_last, unsigned char *Te);
 
-#endif //CRYPTO_PACKETS_H
+#endif

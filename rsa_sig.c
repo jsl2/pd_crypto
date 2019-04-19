@@ -1,4 +1,4 @@
-// RFC8017 PCKS #1 2.2
+/* RFC8017 PCKS #1 2.2 */
 #include <stdint.h>
 #include "lib/sha2.h"
 #include "rsa_sig.h"
@@ -15,22 +15,22 @@ uint8_t T_prefix[T_PREFIX_LEN] = {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86
 void pkcs_encode(uint8_t *M, uint16_t em_len, uint8_t *EM) {
     uint16_t i;
     EM[1] = 1;
-    for (i = 0; i < em_len - T_LEN - 3; i++) // remove magic number
+    for (i = 0; i < em_len - T_LEN - 3; i++)
         EM[2 + i] = 0xFF;
 
-    for (i = 0; i < T_PREFIX_LEN; i++) // remove magic number (tlen)
+    for (i = 0; i < T_PREFIX_LEN; i++)
         EM[em_len - T_LEN + i] = T_prefix[i];
 
     for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
         EM[em_len - SHA256_DIGEST_LENGTH + i] = M[i];
 }
 
-void os2ip(uint8_t *EM, uint16_t *m) {
+void os2ip(uint8_t *EM, uint16_t *m, uint16_t len) {
     uint16_t i;
-    m[0] = 64;
-    for (i = 0; i < 64; i++) {
-        m[i + 1] = EM[127 - 2 * i];
-        m[i + 1] |= (EM[126 - 2 * i] << 8u);
+    m[0] = (uint16_t) (len / 2);
+    for (i = 0; i < len / 2; i++) {
+        m[i + 1] = EM[len - 1 - 2 * i];
+        m[i + 1] |= (EM[len - 2 - 2 * i] << 8u);
     }
 }
 
@@ -47,7 +47,7 @@ pkcs_sign(uint16_t *n, uint16_t *n_prime, uint16_t *d, uint16_t *R, uint16_t *pa
     SHA256_Update(&ctx, (const uint8_t *) (&part2[1]), (size_t) part2[0] * 2);
     SHA256_Final(hash, &ctx);
     pkcs_encode(hash, 128, EM);
-    os2ip(EM, m);
+    os2ip(EM, m, 128);
 
     dh_mon_exp(m, d, n, n_prime, R, sig);
 }
@@ -65,7 +65,7 @@ pkcs_verify(uint16_t *n, uint16_t *n_prime, uint16_t *e, uint16_t *R, uint16_t *
     SHA256_Update(&ctx, (const uint8_t *) (&part2[1]), (size_t) part2[0] * 2);
     SHA256_Final(hash, &ctx);
     pkcs_encode(hash, 128, EM);
-    os2ip(EM, m);
+    os2ip(EM, m, 128);
 
     dh_mon_exp(sig, e, n, n_prime, R, verif);
     return is_equal(m, verif);

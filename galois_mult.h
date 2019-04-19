@@ -1,10 +1,10 @@
-//
-//  Galois Multiplication.h
-//  P&D
-//
-//  Created by Augustin Moutarlier on 10/03/2019.
-//  Copyright © 2019 Augustin MOUTARLIER. All rights reserved.
-//
+/*
+  Galois Multiplication.h
+  P&D
+
+  Created by Augustin Moutarlier on 10/03/2019.
+  Copyright © 2019 Augustin MOUTARLIER. All rights reserved.
+*/
 
 #ifndef Galois_Multiplication_h
 #define Galois_Multiplication_h

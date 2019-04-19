@@ -367,7 +367,7 @@ void test_montgomery() {
     dh_mon_pro(x, x, mod, mod_prime, test_array);
     RUN_TEST("dh_mon_pro test", test_array, expected);
 
-    // Test montgomery exponentiation and multiplication
+    /* Test montgomery exponentiation and multiplication */
     mp_square(R, test_array);
     RUN_TEST("R*R", test_array, R_square);
 
@@ -731,7 +731,7 @@ void test_sts() {
     SHA256_Final(key_A, &ctx);
     RUN_TEST_STR("Diffie-Hellman key test (A)", (const char *) key_A, (const char *) key_expected);
 
-    // RSA verification
+    /* RSA verification */
     RUN_TEST_BOOL("Signature verification test (A verify B's signature)",
                   pkcs_verify(n_B, n_B_prime, e_B, R, two_pow_y, two_pow_x, sig_B));
 
@@ -746,7 +746,7 @@ void test_bbs() {
     uint16_t bbs_expected[MAX_SIZE] = {0x10, 0x81c1, 0x0101, 0xc71e, 0xa542, 0x2451, 0x5a2f, 0x1655, 0x9ac0, 0x170d,
                                        0xa52a, 0x24cf, 0x79e7, 0xd59f, 0xbe6c, 0x8747, 0x209a};
     uint16_t bbs_out[MAX_SIZE] = {0};
-    uint16_t length = 256; // bits
+    uint16_t length = 256; /* bits */
     bbs(seed, length, bbs_out);
     RUN_TEST("Blum-blum-shub PRNG", bbs_out, bbs_expected);
 }
@@ -1057,7 +1057,7 @@ void test_gcm() {
     aes_set_encrypt_key(&key, (const uint8_t *) "\xfe\xf9\xe9\x92\x86\x65\x73\x1c\x7d\x6a\x8f\x94\x67\x30\x83\x08",
                         128);
 
-    // INITIALIZATION
+    /* INITIALIZATION */
     for (i = 0; i < 12; i++) {
         iv[i] = (uint8_t) rand();
     }
@@ -1065,7 +1065,7 @@ void test_gcm() {
     pack_data_first(Y, packet_1);
     handle_packet(packet_1, &key, recovered_plaintext);
 
-    // ENCRYPTION AND DECRYPTION CHAIN OF PLAINTEXTS
+    /* ENCRYPTION AND DECRYPTION CHAIN OF PLAINTEXTS */
 #ifdef DEBUG_PRINT
     printf("Recovered Plain text : \n");
 #endif

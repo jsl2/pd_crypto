@@ -66,4 +66,4 @@ void remove_leading_zeros(uint16_t *x);
 
 void dh_mon_pro(uint16_t *x, uint16_t *y, uint16_t *m, uint16_t *m_prime, uint16_t *u);
 
-#endif // CRYPTO_MP_ARITHMETIC_H
+#endif

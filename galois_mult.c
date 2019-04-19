@@ -1,19 +1,19 @@
-//
-//  Galois Multiplication.c
-//  P&D
-//
-//  Created by Augustin Moutarlier on 10/03/2019.
-//  Copyright © 2019 Augustin MOUTARLIER. All rights reserved.
-//
+/*
+  Galois Multiplication.c
+  P&D
+
+  Created by Augustin Moutarlier on 10/03/2019.
+  Copyright © 2019 Augustin MOUTARLIER. All rights reserved.
+*/
 #include <stdio.h>
 #include <stdint.h>
 
 #include "galois_mult.h"
 
-// Method 1 corresponding to Algorithm 1 from paper, where W corresponds to Y in algorithm
+/* Method 1 corresponding to Algorithm 1 from paper, where W corresponds to Y in algorithm */
 unsigned char R[16] = {0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-// Increment function for Y
+/* Increment function for Y */
 void increment(uint8_t *Y) {
     uint8_t i;
     if (Y[12] == 0xFF && Y[13] == 0xFF && Y[14] == 0xFF && Y[15] == 0xFF) {
@@ -39,9 +39,9 @@ void increment_lenC(uint8_t *lenC) {
     }
 }
 
-// The following function is right-shifting a 128bit number that is represented as an array of 8 elements of 16 bits.
+/* The following function is right-shifting a 128bit number that is represented as an array of 8 elements of 16 bits. */
 void right_shift(uint8_t *V){
-    uint8_t carry; // Carry due to previous element in array
+    uint8_t carry; /* Carry due to previous element in array */
     uint8_t i;
     uint8_t mask = 0x01;
     uint8_t X[16];
@@ -60,7 +60,7 @@ void right_shift(uint8_t *V){
     }
 }
 
-// The following function is doing an XOR between a and b and store its result in a
+/* The following function is doing an XOR between a and b and store its result in a */
 void xor(unsigned char *a, unsigned char *b){
     uint8_t i;
     for (i=0; i<16; i++) {
