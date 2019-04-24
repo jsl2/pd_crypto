@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <assert.h>
 #include "mp_arithmetic.h"
 
 void print_radix(uint16_t *x) {
@@ -520,6 +521,7 @@ void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
     uint16_t temp[MAX_SIZE] = {0};
     uint16_t temp2[MAX_SIZE] = {0};
     uint16_t temp3[MAX_SIZE] = {0};
+    uint32_t u32_l, u32_r, l32_l, l32_r;
 
     mp_copy(x, r);
     if (t == 0)
@@ -528,13 +530,13 @@ void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
         if (is_gt(y, x)) {
             q[0] = 1;
             q[0] = 0;
-            mp_copy(x, r);
             remove_leading_zeros(r);
             return;
         } else {
-            sign_extend(x, t - n);
+            sign_extend(r, t - n);
         }
     }
+
     for (j = 0; j <= n - t; j++)
         q[j + 1] = 0;
     q[0] = n - t + ONE;
@@ -550,9 +552,26 @@ void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
             q[i - t] = NEG_ONE;
         else
             q[i - t] = (uint16_t) ((((uint32_t) r[i + 1] << 16u) + r[i]) / y[t + 1]);
-        while (((uint64_t) q[i - t] * (((uint64_t) (y[t + 1]) << 16u) + y[t])) >
-               ((uint64_t) r[i + 1] << 32u) + ((uint64_t) r[i] << 16u) + ((uint64_t) r[i - 1]))
-            q[i - t] -= 1;
+
+        while (1) {
+            u32_l = (((uint32_t) q[i - t]) * y[t + 1] + ((((uint32_t) q[i - t]) * y[t]) >> 16u)) >> 16u;
+            u32_r = (uint32_t) r[i + 1];
+            if (u32_l > u32_r) {
+                q[i - t] -= 1;
+            } else if (u32_l == u32_r) {
+                l32_l = ((uint32_t) q[i - t] * (((uint32_t) (y[t + 1]) << 16u) + y[t]));
+                l32_r = ((uint32_t) r[i] << 16u) + ((uint32_t) r[i - 1]);
+                if (l32_l > l32_r) {
+                    assert((((uint64_t) q[i - t] * (((uint64_t) (y[t + 1]) << 16u) + y[t])) >
+                            ((uint64_t) r[i + 1] << 32u) + ((uint64_t) r[i] << 16u) + ((uint64_t) r[i - 1])));
+                    q[i - t] -= 1;
+                } else
+                    break;
+            } else {
+                break;
+            }
+        }
+
         lsh_radix(y, i - t - ONE, temp2);
         mp_mult_scalar(temp2, q[i - t], temp);
         if (temp[0] < r[0])
