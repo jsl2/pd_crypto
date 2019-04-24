@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <stdio.h>
-#include <assert.h>
 #include "mp_arithmetic.h"
 
 void print_radix(uint16_t *x) {
@@ -280,12 +279,12 @@ void mp_square(uint16_t *x, uint16_t *w) {
     for (i = 0; i < 2 * x[0]; i++)
         w[i + 1] = 0;
     for (i = 0; i < x[0]; i++) {
-        uv = (uint64_t) w[2 * i + 1] + (uint64_t) x[i + 1] * (uint64_t) x[i + 1];
+        uv = w[2 * i + 1] + (uint64_t) x[i + 1] * x[i + 1];
         w[2 * i + 1] = (uint16_t) uv;
         c = (uint32_t) (uv >> 16u);
         for (j = i + ONE; j < x[0]; j++) {
-            uv = (uint64_t) w[i + j + 1];
-            temp = (uint64_t) x[j + 1] * (uint64_t) x[i + 1];
+            uv = w[i + j + 1];
+            temp = (uint64_t) x[j + 1] * x[i + 1];
             temp <<= 1;
             uv += (temp + c);
             w[i + j + 1] = (uint16_t) uv;
@@ -562,8 +561,6 @@ void mp_div(uint16_t *x, uint16_t *y, uint16_t *q, uint16_t *r) {
                 l32_l = ((uint32_t) q[i - t] * (((uint32_t) (y[t + 1]) << 16u) + y[t]));
                 l32_r = ((uint32_t) r[i] << 16u) + ((uint32_t) r[i - 1]);
                 if (l32_l > l32_r) {
-                    assert((((uint64_t) q[i - t] * (((uint64_t) (y[t + 1]) << 16u) + y[t])) >
-                            ((uint64_t) r[i + 1] << 32u) + ((uint64_t) r[i] << 16u) + ((uint64_t) r[i - 1])));
                     q[i - t] -= 1;
                 } else
                     break;
